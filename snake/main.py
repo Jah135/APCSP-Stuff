@@ -1,6 +1,6 @@
 from enum import IntEnum
 from random import randint
-from time import sleep
+from time import sleep, perf_counter
 from keyboard import is_pressed
 
 SNAKE_BODY_CHAR = "# "
@@ -10,6 +10,8 @@ EMPTY_CHAR = ". "
 
 WIDTH = 10
 HEIGHT = 10
+
+GAME_RATE = 10
 
 class Facing(IntEnum):
 	Right = 0
@@ -92,7 +94,10 @@ def handle_input():
 	elif is_pressed("d"):
 		snake.turn_to(Facing.Right)
 
-while True:
+def update_game():
+	global score
+	global fruit_position
+
 	last_tail = snake.body[len(snake.body) - 1]
 
 	snake.update()
@@ -101,16 +106,26 @@ while True:
 
 	if head_pos[0] < 0 or head_pos[0] >= WIDTH or head_pos[1] < 0 or head_pos[1] >= HEIGHT or snake.body.count(head_pos) > 1:
 		print("bro died")
-		break
+		return False
 
 	if head_pos == fruit_position:
 		score += 1
 
 		fruit_position = (randint(0, WIDTH - 1), randint(0, HEIGHT - 1))
 		snake.body.append(last_tail)
+	
+	return True
 
-	print(render_game())
+next_move = 0
 
-	sleep(0.2)
-
+while True:
+	if perf_counter() >= next_move:
+		next_move = perf_counter() + (1 / GAME_RATE)
+		if not update_game():
+			break
+		
+		print(render_game())
+		
 	handle_input()
+
+	sleep(0.01)
