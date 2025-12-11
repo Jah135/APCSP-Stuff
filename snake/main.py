@@ -11,7 +11,7 @@ EMPTY_CHAR = ". "
 WIDTH = 10
 HEIGHT = 10
 
-GAME_RATE = 10
+GAME_RATE = 5
 
 class Facing(IntEnum):
 	Right = 0
@@ -85,13 +85,13 @@ def render_game() -> str:
 	
 	return output
 def handle_input():
-	if is_pressed("w"):
+	if is_pressed("up"):
 		snake.turn_to(Facing.Up)
-	elif is_pressed("a"):
+	elif is_pressed("left"):
 		snake.turn_to(Facing.Left)
-	elif is_pressed("s"):
+	elif is_pressed("down"):
 		snake.turn_to(Facing.Down)
-	elif is_pressed("d"):
+	elif is_pressed("right"):
 		snake.turn_to(Facing.Right)
 
 def update_game():
