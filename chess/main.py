@@ -122,7 +122,7 @@ class ChessBoard:
 				index = self.get_index(x, y)
 				piece = self.get_piece(x, y)
 
-				name = f"{index:2}" # PIECE_NAMES[get_piece_type(piece)]
+				name = PIECE_NAMES[get_piece_type(piece)]
 
 				is_highlighted = index in highlight_indices
 
@@ -144,6 +144,6 @@ board = ChessBoard()
 board.set_piece(5, 6, KNIGHT | 8)
 board.set_piece(3, 6, PAWN | 8)
 
-moves = board.get_moves(3, 6)
+moves = board.get_moves(5, 6)
 print(board.render(moves))
 print(moves)
