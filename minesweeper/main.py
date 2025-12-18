@@ -1,5 +1,6 @@
 from pyansi import AnsiStyle, Palette, PaletteColor
 from random import randint
+from keyboard import add_hotkey
 
 CLOSED = 0
 OPEN = 1
@@ -77,6 +78,8 @@ class Field:
 				index = y * self.width + x
 				val = self.data[index]
 
+				is_highlighted = index == highlight_index
+
 				px = ""
 
 				if val == OPEN:
@@ -85,14 +88,17 @@ class Field:
 					if danger == 0:
 						px = ". "
 					else:
-						style = DANGER_STYLES[danger - 1]
-						px = style.apply_with_reset(f"{danger} ")
+						px = f"{danger} "
+
+						if not is_highlighted:
+							style = DANGER_STYLES[danger - 1]
+							px = style.apply_with_reset(px)
 				else: #val == CLOSED:
 					px = "# "
 				# elif val == MINE:
 				# 	output += "X "
 
-				if index == highlight_index:
+				if is_highlighted:
 					px = HIGHLIGHT_STYLE.apply_with_reset(px)
 
 				output += px
@@ -103,8 +109,11 @@ class Field:
 
 cursor = (0, 0)
 
-new_field = Field(10, 10)
-new_field.place_mines(10)
+new_field = Field(30, 10)
+new_field.place_mines(40)
+
+print(new_field.render(0))
+
 new_field.open_cell(0, 0)
 new_field.open_cell(5, 5)
 
