@@ -1,4 +1,5 @@
 from Field import Field
+from Input import KeyboardInput, PlaybackInput
 from time import sleep
 from random import randint
 import keyboard
@@ -8,8 +9,10 @@ SEED = randint(0, 19099999)
 DO_PLAYBACK = False
 DO_RECORD = True
 
-current_playback_index = 0
-playback_sequence = []
+input = KeyboardInput()
+
+if DO_RECORD:
+	input.start_recording()
 
 if DO_PLAYBACK:
 	print("replaying")
@@ -17,7 +20,7 @@ if DO_PLAYBACK:
 	with open("playback_sequence.txt", "r") as f:
 		SEED = int(f.readline())
 
-		playback_sequence = f.readlines()
+		input = PlaybackInput([key.strip() for key in f.readlines()], 0.01)
 
 mine_field = Field(30, 16, SEED)
 mine_field.place_mines(70)
@@ -40,9 +43,7 @@ def move_cursor(dx: int, dy: int):
 		clamp(cursor[1] + dy, 0, mine_field.height - 1)
 	)
 def redraw_screen():
-	cursor_index = mine_field.to_index(*cursor)
-
-	print("\x1b[H\x1b[2J" + mine_field.render(cursor_index) + f"\n{mine_field.get_flag_count()}/{mine_field.get_mine_count()}\nRECORDING: {DO_RECORD}\nPLAYBACK: {DO_PLAYBACK}")
+	print("\x1b[H\x1b[2J" + mine_field.render(cursor) + f"\n{mine_field.get_flag_count()}/{mine_field.get_mine_count()}\nRECORDING: {DO_RECORD}\nPLAYBACK: {DO_PLAYBACK}")
 
 def on_left_pressed():
 	move_cursor(-1, 0)
@@ -53,9 +54,9 @@ def on_up_pressed():
 def on_down_pressed():
 	move_cursor(0, 1)
 def on_flag_pressed():
-	mine_field.flag_cell(*cursor)
+	mine_field.player_flag_cell(*cursor)
 def on_dig_pressed():
-	mine_field.open_cell(*cursor)
+	mine_field.player_open_cell(*cursor)
 
 KEYMAPPING = {
 	"w": on_up_pressed,
@@ -70,27 +71,19 @@ KEYMAPPING = {
 redraw_screen()
 
 while not mine_field.is_exploded:
-	if DO_PLAYBACK:
-		sleep(0.01)
-		key = playback_sequence[current_playback_index].strip()
-		current_playback_index += 1
-	else:
-		key = keyboard.read_key()
-		is_down = keyboard.is_pressed(key)
+	key = input.read()
 
-		if not is_down:
-			continue # ignore release
+	if key == None:
+		continue
 
-		if DO_RECORD:
-			playback_sequence.append(str(key))
-
-
-	callback = KEYMAPPING.get(str(key))
+	callback = KEYMAPPING.get(key)
 
 	if callback == None:
 		continue
 
 	callback()
+
+	redraw_screen()
 
 	if mine_field.is_win_state():
 		on_win()
@@ -99,12 +92,11 @@ while not mine_field.is_exploded:
 		on_lose()
 		break
 
-	redraw_screen()
 
-if DO_RECORD:
+if DO_RECORD and isinstance(input, KeyboardInput):
 	with open("playback_sequence.txt", "w") as f:
 		f.write(f"{SEED}\n")
-		f.writelines(f"{x}\n" for x in playback_sequence)
+		f.writelines(f"{x}\n" for x in input.stop_recording())
 
 print("press esc to exit.")
 keyboard.wait("esc")
