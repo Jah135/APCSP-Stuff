@@ -1,21 +1,19 @@
+# imports :)
 from random import Random
 from pyansi import AnsiStyle, Palette, PaletteColor
+from typing import Callable
+import kernels
 
 # FIELD STATES
-CLOSED = 0b01
-OPEN = 0b10
-MINE = 0b11
+CLOSED = 0b00
+OPEN = 0b01
+MINE = 0b10
 FLAGGED = 0b100
 
 MAX_SAFETY_ATTEMPTS = 8
-SHOW_OFFSETS = True
+SHOW_KERNEL = True
 
-OFFSETS_NORMAL = [ (-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1) ]
-OFFSETS_ORTHO = [ (-1, 0), (1, 0), (0, -1), (0, 1) ]
-OFFSETS_ORTHO_FAR = [ (-2, 0), (-1, 0), (2, 0), (1, 0), (0, -2), (0, -1), (0, 2), (0, 1) ]
-OFFSETS_DIAG = [ (-1, -1), (1, -1), (-1, 1), (1, 1) ]
-OFFSETS_KNIGHT = [ (-1, -2), (1, -2), (-2, -1), (2, -1), (-2, 1), (2, 1), (-1, 2), (1, 2) ]
-MINE_CHECK_OFFSETS = OFFSETS_ORTHO_FAR
+MINE_KERNEL = kernels.ORTHO_FAR
 
 DANGER_STYLES = [ AnsiStyle(fg=Palette(PaletteColor.BrightBlue)), AnsiStyle(fg=Palette(PaletteColor.BrightGreen)),
 				  AnsiStyle(fg=Palette(PaletteColor.BrightRed)), AnsiStyle(fg=Palette(PaletteColor.BrightMagenta)),
@@ -23,6 +21,7 @@ DANGER_STYLES = [ AnsiStyle(fg=Palette(PaletteColor.BrightBlue)), AnsiStyle(fg=P
 				  AnsiStyle(fg=Palette(PaletteColor.Red)), AnsiStyle(fg=Palette(PaletteColor.BrightBlack)) ]
 FLAG_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightYellow), bg=Palette(PaletteColor.Red))
 CLOSED_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightBlack), bg=Palette(PaletteColor.BrightBlack))
+MINE_STYLE = AnsiStyle(fg=Palette(PaletteColor.Black), bg=Palette(PaletteColor.BrightRed))
 HIGHLIGHT_STYLE = AnsiStyle(bg=Palette(PaletteColor.BrightWhite), fg=Palette(PaletteColor.Black))
 
 # Returns field type
@@ -92,11 +91,11 @@ class Field:
 				count += 1
 		
 		return count
-	def get_mine_count(self) -> int:
+	def get_state_count(self, state: int) -> int:
 		count = 0
 
-		for state in self._field:
-			if extract_type(state) == MINE:
+		for field_state in self._field:
+			if extract_type(field_state) == state:
 				count += 1
 		
 		return count
@@ -111,34 +110,40 @@ class Field:
 				all_flagged = False
 				break
 		
-		return all_flagged
-	
-	def get_nearby_mine_count(self, x: int, y: int) -> int:
-		nearby = 0
+		return all_flagged and self.get_state_count(CLOSED) == 0
 
-		for offset_x, offset_y in MINE_CHECK_OFFSETS:
+	def run_kernel(self, x: int, y: int, applier: Callable[[int, int, int], None]) -> None:
+		for offset_x, offset_y in MINE_KERNEL:
+			target_x, target_y = x + offset_x, y + offset_y
+
+			if not self.within_bounds(target_x, target_y):
+				continue
+			
+			index = self.to_index(target_x, target_y)
+
+			applier(index, target_x, target_y)
+	def count_kernel(self, x: int, y: int, predicate: Callable[[int, int, int], bool]) -> int:
+		count = 0
+
+		for offset_x, offset_y in MINE_KERNEL:
 			check_x, check_y = x + offset_x, y + offset_y
 
 			if not self.within_bounds(check_x, check_y):
 				continue
+			
+			index = self.to_index(check_x, check_y)
 
-			if self.read_field(check_x, check_y) == MINE:
-				nearby += 1
-
-		return nearby
-	def get_nearby_flag_count(self, x: int, y: int) -> int:
-		nearby = 0
-
-		for offset_x, offset_y in MINE_CHECK_OFFSETS:
-			check_x, check_y = x + offset_x, y + offset_y
-
-			if not self.within_bounds(check_x, check_y):
+			if not predicate(index, check_x, check_y):
 				continue
 
-			if self.read_flag(check_x, check_y):
-				nearby += 1
-		
-		return nearby
+			count += 1
+
+		return count
+
+	def get_kernel_state_count(self, x: int, y: int, state: int) -> int:
+		return self.count_kernel(x, y, lambda index, *_: self._read_field(index) == state)
+	def get_kernel_flag_count(self, x: int, y: int) -> int:
+		return self.count_kernel(x, y, lambda index, *_: self._read_flag(index))
 
 	def ensure_safety(self, x: int, y: int):
 		is_totally_safe = False
@@ -164,61 +169,70 @@ class Field:
 						self.write_field(check_x, check_y, CLOSED)
 						# self.place_mine()
 
-	def player_open_cell(self, x: int, y: int, do_recurse: bool = True) -> bool:
+	def player_open_cell(self, x: int, y: int, do_recurse: bool = True):
 		if not self.within_bounds(x, y):
-			return False
+			return
 
 		index = self.to_index(x, y)
 
 		if self._read_flag(index):
-			return False
-		
-		danger = self.get_nearby_mine_count(x, y)
+			return
 
-		if self._read_field(index) == OPEN:
-			# CHORDING
-			if do_recurse and danger == self.get_nearby_flag_count(x, y):
-				for off_x, off_y in MINE_CHECK_OFFSETS:
-					self.player_open_cell(x + off_x, y + off_y, do_recurse=False)
-				
-				return True
-
-			return False
-
+		# ensure safety
 		if not self.is_first_move:
 			self.is_first_move = True
 			self.ensure_safety(x, y)
 
+		# die on mine
 		if self._read_field(index) == MINE:
 			self.is_exploded = True
 
-			return True
+			return
+
+		danger = self.get_kernel_state_count(x, y, MINE)
+
+		if self._read_field(index) == OPEN:
+			# CHORDING
+			if do_recurse and danger == self.get_kernel_flag_count(x, y):
+				for off_x, off_y in MINE_KERNEL:
+					self.player_open_cell(x + off_x, y + off_y, do_recurse=False)
+				
+				return
+
+			return
 
 		self._write_field(index, OPEN)
 
 		if danger == 0: # open neighboring cells
-			for off_x, off_y in MINE_CHECK_OFFSETS:
-				self.player_open_cell(x + off_x, y + off_y)
+			self.run_kernel(x, y, lambda _, x, y: self.player_open_cell(x, y, True))
 		
-		return True
-	def player_flag_cell(self, x: int, y: int) -> bool:
+		return
+	def player_flag_cell(self, x: int, y: int, do_recurse: bool = True):
 		if not self.within_bounds(x, y):
-			return False
+			return
 		
 		if self.read_field(x, y) == OPEN:
-			return False
+			# CHORDING
+			if do_recurse:
+				closed_count = self.get_kernel_state_count(x, y, CLOSED)
+				mine_count = self.get_kernel_state_count(x, y, MINE)
+
+				if closed_count == 0 and mine_count > 0:
+					self.run_kernel(x, y, lambda _, tx, ty: self.player_flag_cell(tx, ty, do_recurse=False) if not self.read_flag(tx, ty) else None)
+
+			return
 		
 		self.write_flag(x, y, not self.read_flag(x, y))
 
-		return True
+		return
 
 	def render(self, cursor_position: tuple[int, int]) -> str:
 		output = ""
 
 		highlight_indices = [self.to_index(*cursor_position)]
 
-		if SHOW_OFFSETS:
-			for off_x, off_y in MINE_CHECK_OFFSETS:
+		if SHOW_KERNEL:
+			for off_x, off_y in MINE_KERNEL:
 				check_x, check_y = cursor_position[0] + off_x, cursor_position[1] + off_y
 
 				if not self.within_bounds(check_x, check_y):
@@ -234,13 +248,11 @@ class Field:
 				is_flagged = self.read_flag(x, y)
 				is_highlighted = index in highlight_indices
 
-
-
 				px_style = None
 				px = ""
 
 				if state == OPEN:
-					danger = self.get_nearby_mine_count(x, y)
+					danger = self.get_kernel_state_count(x, y, MINE)
 
 					if danger == 0:
 						px = ". "
@@ -254,8 +266,12 @@ class Field:
 						px = "P "
 						px_style = FLAG_STYLE
 					else:
-						px = "# "
-						px_style = CLOSED_STYLE
+						if state == MINE and self.is_exploded:
+							px = "X "
+							px_style = MINE_STYLE
+						else:
+							px = "??"
+							px_style = CLOSED_STYLE
 
 				if is_highlighted:
 					px_style = HIGHLIGHT_STYLE

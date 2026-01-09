@@ -1,4 +1,4 @@
-from Field import Field
+from Field import Field, MINE
 from Input import KeyboardInput, PlaybackInput
 from time import sleep
 from random import randint
@@ -6,8 +6,8 @@ import keyboard
 
 SEED = randint(0, 19099999)
 
-DO_PLAYBACK = False
-DO_RECORD = True
+DO_PLAYBACK = True
+DO_RECORD = False
 
 input = KeyboardInput()
 
@@ -43,7 +43,7 @@ def move_cursor(dx: int, dy: int):
 		clamp(cursor[1] + dy, 0, mine_field.height - 1)
 	)
 def redraw_screen():
-	print("\x1b[H\x1b[2J" + mine_field.render(cursor) + f"\n{mine_field.get_flag_count()}/{mine_field.get_mine_count()}\nRECORDING: {DO_RECORD}\nPLAYBACK: {DO_PLAYBACK}")
+	print("\x1b[H\x1b[2J" + mine_field.render(cursor) + f"\n{mine_field.get_flag_count()}/{mine_field.get_state_count(MINE)}\nRECORDING: {DO_RECORD}\nPLAYBACK: {DO_PLAYBACK}")
 
 def on_left_pressed():
 	move_cursor(-1, 0)
