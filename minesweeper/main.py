@@ -6,8 +6,8 @@ import keyboard
 
 SEED = randint(0, 19099999)
 
-DO_PLAYBACK = True
-DO_RECORD = False
+DO_PLAYBACK = False
+DO_RECORD = True
 
 input = KeyboardInput()
 
@@ -22,8 +22,8 @@ if DO_PLAYBACK:
 
 		input = PlaybackInput([key.strip() for key in f.readlines()], 0.01)
 
-mine_field = Field(30, 16, SEED)
-mine_field.place_mines(70)
+mine_field = Field(30, 20, SEED)
+mine_field.place_mines(100)
 
 cursor = (0, 0)
 

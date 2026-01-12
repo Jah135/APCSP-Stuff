@@ -10,10 +10,13 @@ OPEN = 0b01
 MINE = 0b10
 FLAGGED = 0b100
 
-MAX_SAFETY_ATTEMPTS = 8
-SHOW_KERNEL = True
+# 0               000
+# ^-> FLAG STATE  ^^^-> FIELD STATE
 
-MINE_KERNEL = kernels.ORTHO_FAR
+MAX_SAFETY_ATTEMPTS = 8
+SHOW_KERNEL = False
+
+MINE_KERNEL = kernels.ORTHO
 
 DANGER_STYLES = [ AnsiStyle(fg=Palette(PaletteColor.BrightBlue)), AnsiStyle(fg=Palette(PaletteColor.BrightGreen)),
 				  AnsiStyle(fg=Palette(PaletteColor.BrightRed)), AnsiStyle(fg=Palette(PaletteColor.BrightMagenta)),
@@ -23,6 +26,7 @@ FLAG_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightYellow), bg=Palette(Palette
 CLOSED_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightBlack), bg=Palette(PaletteColor.BrightBlack))
 MINE_STYLE = AnsiStyle(fg=Palette(PaletteColor.Black), bg=Palette(PaletteColor.BrightRed))
 HIGHLIGHT_STYLE = AnsiStyle(bg=Palette(PaletteColor.BrightWhite), fg=Palette(PaletteColor.Black))
+KERNEL_STYLE = AnsiStyle(bg=Palette(PaletteColor.BrightYellow), fg=Palette(PaletteColor.Black))
 
 # Returns field type
 def extract_type(state: int) -> int:
@@ -49,7 +53,7 @@ class Field:
 		return self._read_field(self.to_index(x, y))
 	
 	def _write_field(self, index: int, new_state: int):
-		self._field[index] |= new_state & ~FLAGGED
+		self._field[index] = self._field[index] & FLAGGED | new_state
 	def write_field(self, x: int, y: int, state: int):
 		self._write_field(self.to_index(x, y), state)
 	
@@ -66,7 +70,6 @@ class Field:
 	def write_flag(self, x: int, y: int, is_flagged: bool):
 		self._write_flag(self.to_index(x, y), is_flagged)
 			
-
 	def within_bounds(self, x: int, y: int) -> bool:
 		return x >= 0 and x < self.width and y >= 0 and y < self.height
 	def to_index(self, x: int, y: int) -> int:
@@ -158,16 +161,15 @@ class Field:
 			attempts += 1
 			is_totally_safe = True
 
-			for off_x in range(-1, 2):
-				for off_y in range(-1, 2):
-					# off_index = self.to_index(x + off_x, y + off_y)
-					check_x, check_y = x + off_x, y + off_y
+			for off_x, off_y in MINE_KERNEL:
+				target_x, target_y = x + off_x, y + off_y
 
-					if self.read_field(check_x, check_y) == MINE:
-						is_totally_safe = False
+				if not self.within_bounds(target_x, target_y):
+					continue
 
-						self.write_field(check_x, check_y, CLOSED)
-						# self.place_mine()
+				if self.read_field(target_x, target_y) == MINE:
+					is_totally_safe = False
+					self.write_field(target_x, target_y, CLOSED)
 
 	def player_open_cell(self, x: int, y: int, do_recurse: bool = True):
 		if not self.within_bounds(x, y):
@@ -195,6 +197,7 @@ class Field:
 			# CHORDING
 			if do_recurse and danger == self.get_kernel_flag_count(x, y):
 				for off_x, off_y in MINE_KERNEL:
+					# pass
 					self.player_open_cell(x + off_x, y + off_y, do_recurse=False)
 				
 				return
@@ -204,7 +207,7 @@ class Field:
 		self._write_field(index, OPEN)
 
 		if danger == 0: # open neighboring cells
-			self.run_kernel(x, y, lambda _, x, y: self.player_open_cell(x, y, True))
+			self.run_kernel(x, y, lambda _, x, y: self.player_open_cell(x, y, False))
 		
 		return
 	def player_flag_cell(self, x: int, y: int, do_recurse: bool = True):
@@ -230,6 +233,7 @@ class Field:
 		output = ""
 
 		highlight_indices = [self.to_index(*cursor_position)]
+		kernel_indices = []
 
 		if SHOW_KERNEL:
 			for off_x, off_y in MINE_KERNEL:
@@ -238,7 +242,7 @@ class Field:
 				if not self.within_bounds(check_x, check_y):
 					continue
 
-				highlight_indices.append(self.to_index(check_x, check_y))
+				kernel_indices.append(self.to_index(check_x, check_y))
 
 		for y in range(self.height):
 			for x in range(self.width):
@@ -247,6 +251,7 @@ class Field:
 				state = self.read_field(x, y)
 				is_flagged = self.read_flag(x, y)
 				is_highlighted = index in highlight_indices
+				is_kernel = index in kernel_indices
 
 				px_style = None
 				px = ""
@@ -275,6 +280,9 @@ class Field:
 
 				if is_highlighted:
 					px_style = HIGHLIGHT_STYLE
+
+				if is_kernel:
+					px_style = KERNEL_STYLE
 
 				if px_style != None:
 					px = px_style.apply_with_reset(px)

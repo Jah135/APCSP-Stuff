@@ -1,5 +1,5 @@
 from random import choice
-from pyansi import AnsiStyle, PaletteColor, Palette
+from pyansi import AnsiStyle, PaletteColor, Palette, bold
 
 ERROR_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightRed))
 
@@ -10,55 +10,62 @@ EXISTS_STYLE = AnsiStyle(bg=Palette(PaletteColor.Yellow), fg=Palette(PaletteColo
 with open("dictionary.txt", "r") as f:
 	DICTIONARY = [x.strip() for x in f.readlines()]
 
-SECRET_WORD = "godly" #choice(DICTIONARY)
+SECRET_WORD = choice(DICTIONARY)
 
-MAX_GUESSES = 10
+MAX_GUESSES = 6
 current_guess = 0
 
-print(f"{AnsiStyle(flags=1).apply_with_reset("Simple Wordle")}\nGuess the {len(SECRET_WORD)} character word!\n")
+print(f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(SECRET_WORD)))} letter word!\n")
 
 def error(text: str):
 	print(ERROR_STYLE.apply_with_reset(text))
 
 while True:
-	guess = input(f"Guess {current_guess}: ").lower()
+	guess_word = input(f"Guess {current_guess + 1}/{MAX_GUESSES}: ").lower()
 	
-	if len(guess) != len(SECRET_WORD):
-		error("Invalid input length!")
-		continue
-
-	if guess not in DICTIONARY:
+	if guess_word not in DICTIONARY:
 		error("Invalid word! (not in dictionary)")
 		continue
 
-	output = ""
+	formatted_guess = ""
 
-	for index in range(len(SECRET_WORD)):
-		guess_character = guess[index]
-		render_character = f" {guess_character.upper()} "
+	# there's probably a better way to do this
+	# count up "available" characters (for determining if the character is in the word and not in the correct position)
+	available_counts = { char:SECRET_WORD.count(char) for char in guess_word }
 
-		num_char_occurances = SECRET_WORD.count(guess_character, index)
-		num_secr_occurances = guess.count(guess_character, index)
+	# decrement "invalid" characters (characters already in the correct position)
+	for secret_char, guess_char in zip(SECRET_WORD, guess_word):
+		if guess_char == secret_char:
+			available_counts[guess_char] -= 1
 
-		print(num_char_occurances, num_secr_occurances, guess_character)
 
-		if SECRET_WORD[index] == guess_character:
-			output += CORRECT_STYLE.apply_with_reset(render_character)
-		elif num_secr_occurances < num_char_occurances:
-			output += EXISTS_STYLE.apply_with_reset(render_character)
+	for index, secret_char, guess_char in zip(range(len(SECRET_WORD)), SECRET_WORD, guess_word):
+		is_correct = secret_char == guess_char
+		exists_in_secret = available_counts.get(guess_char, 0) > 0
+
+		available_counts[guess_char] -= 1
+
+		render_char = f" {guess_char.upper()} "
+
+		if is_correct:
+			formatted_guess += CORRECT_STYLE.apply_with_reset(render_char)
+		elif not is_correct and exists_in_secret:
+			formatted_guess += EXISTS_STYLE.apply_with_reset(render_char)
 		else:
-			output += INCORRECT_STYLE.apply_with_reset(render_character)
+			formatted_guess += INCORRECT_STYLE.apply_with_reset(render_char)
 		
-		output += " "
+		formatted_guess += " "
 	
-	print(output)
+	print(formatted_guess)
 
-	if guess == SECRET_WORD:
+	if guess_word == SECRET_WORD:
 		print("You guessed the word!")
 		break
 	
 	current_guess += 1
 
-	if current_guess > MAX_GUESSES:
-		print("Ran out of guesses")
+	if current_guess >= MAX_GUESSES:
+		print(f"Ran out of guesses.")
 		break
+
+print(f"The secret word was {bold(SECRET_WORD)}.")
