@@ -3,14 +3,17 @@ from typing import TypeVar
 import groups
 from app import ConnectionsApp
 
-T = TypeVar("T")
-
-def select_random(group: dict[str, T]) -> tuple[str, T]:
+def select_random(group: dict[str, list[str]]) -> tuple[str, list[str]]:
 	index = choice(list(group.keys()))
 
 	return index, group[index]
 
-print(select_random(groups.HARD))
-
 new_app = ConnectionsApp()
-new_app.start()
+new_app.start(
+	[
+		select_random(groups.EASY),
+		select_random(groups.MEDIUM),
+		select_random(groups.HARD),
+		select_random(groups.TRICKY)
+	]
+)
