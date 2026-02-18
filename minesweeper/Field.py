@@ -14,9 +14,9 @@ FLAGGED = 0b100
 # ^-> FLAG STATE  ^^^-> FIELD STATE
 
 MAX_SAFETY_ATTEMPTS = 8
-SHOW_KERNEL = False
+SHOW_KERNEL = True
 
-MINE_KERNEL = kernels.ORTHO
+MINE_KERNEL = kernels.ORTHO_FAR
 
 DANGER_STYLES = [ AnsiStyle(fg=Palette(PaletteColor.BrightBlue)), AnsiStyle(fg=Palette(PaletteColor.BrightGreen)),
 				  AnsiStyle(fg=Palette(PaletteColor.BrightRed)), AnsiStyle(fg=Palette(PaletteColor.BrightMagenta)),
@@ -275,7 +275,7 @@ class Field:
 							px = "X "
 							px_style = MINE_STYLE
 						else:
-							px = "??"
+							px = "? "
 							px_style = CLOSED_STYLE
 
 				if is_highlighted:
