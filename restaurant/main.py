@@ -11,9 +11,9 @@ TOPPINGS = {
 }
 
 BEVERAGES = {
-	"small drink": 1,
-	"medium drink": 1.5,
-	"large drink": 2.25,
+	"small": 1,
+	"medium": 1.5,
+	"large": 2.25,
 }
 
 DESSERTS = {
@@ -64,14 +64,17 @@ def prompt_menu(title: str, items: dict[str, float]) -> tuple[str, float]:
 		return choice, items[choice]
 
 def prompt_toppings(receipt: Receipt):
-	receipt.add_item(*prompt_menu("TOPPINGS MENU", TOPPINGS))
+	item_name, price = prompt_menu("TOPPINGS MENU", TOPPINGS)
+	receipt.add_item("with " + item_name, price)
 def prompt_sandwiches(receipt: Receipt):
-	receipt.add_item(*prompt_menu("SANDWICHES MENU", SANDWICHES))
+	item_name, price = prompt_menu("SANDWICHES MENU", SANDWICHES)
+	receipt.add_item(item_name + " sandwich", price)
 
 	if sanitized_input("Toppings? (y/n) ") == "y":
 		prompt_toppings(receipt)
 def prompt_beverages(receipt: Receipt):
-	receipt.add_item(*prompt_menu("BEVERAGES MENU", BEVERAGES))
+	item_name, price = prompt_menu("BEVERAGES MENU", BEVERAGES)
+	receipt.add_item(item_name + " drink", price)
 def prompt_desserts(receipt: Receipt):
 	receipt.add_item(*prompt_menu("DESSERTS MENU", DESSERTS))
 
