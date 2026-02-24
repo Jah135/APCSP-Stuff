@@ -1,5 +1,6 @@
 from random import choice
 from pyansi import AnsiStyle, PaletteColor, Palette, bold
+from game import WordleGame, LetterValidity, check_word
 
 ERROR_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightRed))
 
@@ -11,69 +12,54 @@ NEUTRAL_STYLE = AnsiStyle(bg=Palette(PaletteColor.White), fg=Palette(PaletteColo
 with open("dictionary.txt", "r") as f:
 	DICTIONARY = [x.strip() for x in f.readlines()]
 
-SECRET_WORD = choice(DICTIONARY)
+GAME = WordleGame(6)
 
-MAX_GUESSES = 6
-guesses = []
-
-
-print(f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(SECRET_WORD)))} letter word!\n")
+print(f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(GAME.secret_word)))} letter word!\n")
 
 def error(text: str):
 	print(ERROR_STYLE.apply_with_reset(text))
 
-def format_guess(guess: str) -> str:
-	available_counts = { char:SECRET_WORD.count(char) for char in guess }
-
-	for secret_char, guess_char in zip(SECRET_WORD, guess):
-		if guess_char == secret_char:
-			available_counts[guess_char] -= 1
-	
+def format_guess(guess: str, game: WordleGame) -> str:
 	output = ""
 
-	for secret_char, guess_char in zip(SECRET_WORD, guess):
-		is_correct = secret_char == guess_char
-		exists_in_secret = available_counts.get(guess_char, 0) > 0
-
-		available_counts[guess_char] -= 1
-
-		render_char = f" {guess_char.upper()} "
-
-		if is_correct:
-			output += CORRECT_STYLE.apply_with_reset(render_char)
-		elif not is_correct and exists_in_secret:
-			output += EXISTS_STYLE.apply_with_reset(render_char)
-		else:
-			output += INCORRECT_STYLE.apply_with_reset(render_char)
+	for char, validity in zip(guess, check_word(guess, game.secret_word)):
+		display = f" {char.upper()} "
+		if validity == LetterValidity.Correct:
+			output += CORRECT_STYLE.apply_with_reset(display)
+		elif validity == LetterValidity.Exists:
+			output += EXISTS_STYLE.apply_with_reset(display)
+		elif validity == LetterValidity.Incorrect:
+			output += INCORRECT_STYLE.apply_with_reset(display)
 
 	return output
 
-def render_screen() -> str:
+def render_game(game: WordleGame) -> str:
 	output = "\x1b[2J\x1b[H"
 
-	for index, guess in enumerate(guesses):
-		output += f"{index + 1} > {format_guess(guess)}\n"
+	for index, guess in enumerate(game.guesses):
+		output += f"{index + 1} > {format_guess(guess, game)}\n"
 
 	return output
 
 while True:
-	current_guess_index = len(guesses) + 1
-	player_guess = input(f"Guess {current_guess_index}/{MAX_GUESSES}: ").lower()
+	current_guess_index = len(GAME.guesses) + 1
+	player_guess = input(f"Guess {current_guess_index}/{GAME.max_guesses}: ").lower()
 	
 	if player_guess not in DICTIONARY:
 		error("Invalid word! (not in dictionary)")
 		continue
+	
+	validity = GAME.make_guess(player_guess)
+	# guesses.append(player_guess)
 
-	guesses.append(player_guess)
+	print(render_game(GAME))
 
-	print(render_screen())
-
-	if player_guess == SECRET_WORD:
+	if player_guess == GAME.secret_word:
 		print("You guessed the word!")
 		break
 	
-	if current_guess_index >= MAX_GUESSES:
+	if current_guess_index >= GAME.max_guesses:
 		print(f"Ran out of guesses.")
 		break
 
-print(f"The secret word was {bold(SECRET_WORD)}.")
+print(f"The secret word was {bold(GAME.secret_word)}.")
