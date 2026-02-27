@@ -45,10 +45,10 @@ def check_word(word: str, target: str) -> list[LetterValidity]:
 # print(check_word("leech", "defer"))
 
 class WordleGame:
-	def __init__(self, max_guesses: int) -> None:
+	def __init__(self, max_guesses: int = 6, secret_word: str | None = None) -> None:
 		self.max_guesses = max_guesses
 
-		self.secret_word = choice(DICTIONARY)
+		self.secret_word = secret_word or choice(DICTIONARY)
 		self.guesses: list[tuple[str, list[LetterValidity]]] = []
 	
 	def make_guess(self, word: str) -> tuple[str, list[LetterValidity]]:

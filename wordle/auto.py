@@ -1,8 +1,8 @@
 from game import WordleGame, LetterValidity, DICTIONARY
+from player import WordlePlayer
 from regex import match
 from random import choice
-
-GAME = WordleGame(10)
+from time import sleep
 
 def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 	incorrect = ""
@@ -27,7 +27,7 @@ def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 	
 	pattern = ""
 
-	for index in range(len(GAME.secret_word)):
+	for index in range(len(word)):
 		correct_char = correct.get(index)
 
 		if correct_char != None:
@@ -43,25 +43,29 @@ def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 
 	return pattern
 
-class Guesser:
+class WordleGuesser(WordlePlayer):
 	def __init__(self, game: WordleGame) -> None:
 		self.game = game
-		self.choices = DICTIONARY
+		self.available = DICTIONARY
 	
+	def choose_word(self) -> str:
+		return choice(self.available)
+
 	def make_guess(self):
-		word = choice(self.choices)
-		pattern = build_regex_pattern(*self.game.make_guess(word))
+		word = self.choose_word()
+		info = self.game.make_guess(word)
+		pattern = build_regex_pattern(*info)
 
-		initial_count = len(self.choices)
-
-		# print(self.game.secret_word in self.choices, self.game.secret_word, pattern)
-		self.choices = [s for s in self.choices if match(pattern, s)]
-
-		secret_exists = self.game.secret_word in self.choices
 		
-		current_count = len(self.choices)
+		old_available = self.available
+		new_available = [s for s in old_available if match(pattern, s)]
+
+		initial_count = len(old_available)
+		current_count = len(new_available)
 		percentage = 1 - (current_count / initial_count)
 
-		print(f"guessing {word}\npattern: {pattern}\ninitial #: {initial_count}\nremaining #: {current_count}\nreduction: {percentage * 100:.1f}%\n\nvalid: {secret_exists}\ntarget: {self.game.secret_word}")
+		print(f"guessing {word}\npattern: {pattern}\ninitial #: {initial_count} ({old_available[0:5]})\nremaining #: {current_count} ({new_available[0:5]})\nreduction: {percentage * 100:.1f}% ({current_count-initial_count})")
 
-		return word
+		self.available = new_available
+
+		return info
