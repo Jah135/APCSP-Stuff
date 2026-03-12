@@ -34,7 +34,7 @@ def render_game(game: WordleGame) -> str:
 
 	return output
 
-game = WordleGame(max_guesses=6)
+game = WordleGame(max_guesses=6,secret_word="teddy")
 player = WordleGuesser(game)
 
 print(f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(game.secret_word)))} letter word!\n")

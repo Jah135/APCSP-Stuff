@@ -5,6 +5,12 @@ from random import choice
 
 VOWELS = "aeiou"
 
+VOWEL_BOOST_MULT = 1.01
+EXISTS_BOOST_MULT = 30
+
+def calculate_repeating_letter_weight(count: int) -> float:
+	return -(count - 1) ** 3 / 9
+
 def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 	incorrect = ""
 	correct: dict[int, str] = {}
@@ -49,6 +55,18 @@ def get_game_filtered_words(words_list: list[str], word: str, word_validity: lis
 
 	return [word for word in words_list if match(pattern, word)]
 
+def extract_letter_frequencies(words_list: list[str], allow: list[str] = []) -> dict[str, int]:
+	letter_frequencies: dict[str, int] = {}
+
+	# TODO: change letter frequency allow list to store also position, might be better???
+
+	for word in words_list:
+		for letter in word:
+			if letter in allow:
+				letter_frequencies[letter] = letter_frequencies.get(letter, 0) + 1
+
+	return letter_frequencies
+
 class WordleGuesser(WordlePlayer):
 	def __init__(self, game: WordleGame) -> None:
 		self.game = game
@@ -59,15 +77,17 @@ class WordleGuesser(WordlePlayer):
 		self.onlyone_letters = [] # letters that are in the word only once
 	
 	def choose_word(self) -> str:
-		letter_frequencies: dict[str, int] = {}
+		# letter_frequencies: dict[str, int] = {}
 
-		for word in self.available:
-			for letter in word:
-				if letter in self.unknown_letters:
-					letter_frequencies[letter] = letter_frequencies.get(letter, 0) + 1
+		# for word in self.available:
+		# 	for letter in word:
+		# 		if letter in self.unknown_letters:
+		# 			letter_frequencies[letter] = letter_frequencies.get(letter, 0) + 1
 		
 		# frequencies_list = [(key, frequency) for key, frequency in letter_frequencies.items()]
 		# frequencies_list.sort(key=lambda info: info[1], reverse=True)
+
+		letter_frequencies = extract_letter_frequencies(self.available, self.unknown_letters)
 
 		words_scores: list[tuple[str, float]] = []
 
@@ -88,11 +108,11 @@ class WordleGuesser(WordlePlayer):
 				exists_in_word = letter in self.existing_letters
 				is_vowel = letter in VOWELS # boost vowels a little bit
 
-				repeating_discount = 1 / (repeat_count + 1) ** 2
-				exist_boost = 20 if exists_in_word else 1
-				vowel_boost = 1.1 if is_vowel else 1
+				weight_repeating = calculate_repeating_letter_weight(repeat_count)
+				weight_exists = EXISTS_BOOST_MULT if exists_in_word else 1
+				weight_vowel = VOWEL_BOOST_MULT if is_vowel else 1
 
-				word_score += letter_frequencies.get(letter, 0) * repeating_discount * exist_boost * vowel_boost
+				word_score += letter_frequencies.get(letter, 0) * weight_repeating * weight_exists * weight_vowel
 
 			words_scores.append((word, word_score))
 		words_scores.sort(key=lambda info: info[1], reverse=True)
@@ -114,17 +134,6 @@ class WordleGuesser(WordlePlayer):
 				self.existing_letters.append(letter)
 			if validity == LetterValidity.OnlyOne and letter not in self.onlyone_letters:
 				self.onlyone_letters.append(letter)
-
-		# initial_count = len(old_available)
-		# current_count = len(new_available)
-		# percentage = 1 - (current_count / initial_count)
-
-		# print(f"initial #: {initial_count}")
-		# print(f"current #: {current_count}")
-		# print(f"reduction: {percentage*100:.2f}% ({current_count - initial_count})")
-		# print(f"guessed word: {word}")
-		# print(f"feedback: {info[1]}")
-		# print(f"pattern: {pattern}")
 
 		self.available = new_available
 		
