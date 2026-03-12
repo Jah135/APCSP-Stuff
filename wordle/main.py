@@ -17,7 +17,7 @@ def format_guess(guess: str, guess_validity: list[LetterValidity]) -> str:
 			output += CORRECT_STYLE.apply_with_reset(display)
 		elif validity == LetterValidity.Exists:
 			output += EXISTS_STYLE.apply_with_reset(display)
-		elif validity == LetterValidity.Incorrect or validity == LetterValidity.ExtraIncorrect:
+		elif validity == LetterValidity.Incorrect or validity == LetterValidity.OnlyOne:
 			output += INCORRECT_STYLE.apply_with_reset(display)
 
 	return output
@@ -34,13 +34,13 @@ def render_game(game: WordleGame) -> str:
 
 	return output
 
-game = WordleGame(max_guesses=6)
-player = WordlePlayer(game)
+game = WordleGame(max_guesses=6,secret_word="police")
+player = WordleGuesser(game)
 
 print(f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(game.secret_word)))} letter word!\n")
 while True:
 	current_guess_index = len(game.guesses) + 1
-	word, _ = player.make_guess()
+	word, _ = player.prompt_guess()
 
 	print(render_game(game))
 

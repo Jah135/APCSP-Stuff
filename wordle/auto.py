@@ -2,7 +2,6 @@ from game import WordleGame, LetterValidity, DICTIONARY
 from player import WordlePlayer
 from regex import match
 from random import choice
-from time import sleep
 
 def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 	incorrect = ""
@@ -14,7 +13,7 @@ def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 
 		if validity == LetterValidity.Correct:
 			correct[index] = char
-		elif validity == LetterValidity.Exists or validity == LetterValidity.ExtraIncorrect:
+		elif validity == LetterValidity.Exists or validity == LetterValidity.OnlyOne:
 			chars = exists.get(index, [])
 
 			if char not in chars:
@@ -51,11 +50,11 @@ class WordleGuesser(WordlePlayer):
 	def choose_word(self) -> str:
 		return choice(self.available)
 
-	def make_guess(self):
+	def prompt_guess(self):
 		word = self.choose_word()
 		info = self.game.make_guess(word)
-		pattern = build_regex_pattern(*info)
 
+		pattern = build_regex_pattern(*info)
 		
 		old_available = self.available
 		new_available = [s for s in old_available if match(pattern, s)]
@@ -64,7 +63,12 @@ class WordleGuesser(WordlePlayer):
 		current_count = len(new_available)
 		percentage = 1 - (current_count / initial_count)
 
-		print(f"guessing {word}\npattern: {pattern}\ninitial #: {initial_count} ({old_available[0:5]})\nremaining #: {current_count} ({new_available[0:5]})\nreduction: {percentage * 100:.1f}% ({current_count-initial_count})")
+		# print(f"initial #: {initial_count}")
+		# print(f"current #: {current_count}")
+		# print(f"reduction: {percentage*100:.2f}% ({current_count - initial_count})")
+		# print(f"guessed word: {word}")
+		# print(f"feedback: {info[1]}")
+		# print(f"pattern: {pattern}")
 
 		self.available = new_available
 

@@ -2,10 +2,13 @@ from random import choice
 from enum import Enum
 
 class LetterValidity(Enum):
-	ExtraIncorrect = "extraincorrect"
+	OnlyOne = "onlyone"
 	Incorrect = "incorrect"
 	Exists = "exists"
 	Correct = "correct"
+
+	def __repr__(self) -> str:
+		return self.name
 
 with open("dictionary.txt", "r") as f:
 	DICTIONARY = [x.strip() for x in f.readlines()]
@@ -36,17 +39,16 @@ def check_word(word: str, target: str) -> list[LetterValidity]:
 			existed.append(guess_char)
 			word_validity.append(LetterValidity.Exists)
 		elif guess_char in existed:
-			word_validity.append(LetterValidity.ExtraIncorrect)
+			word_validity.append(LetterValidity.OnlyOne)
 		else:
 			word_validity.append(LetterValidity.Incorrect)
 
 	return word_validity
 
-# print(check_word("leech", "defer"))
-
 class WordleGame:
 	def __init__(self, max_guesses: int = 6, secret_word: str | None = None) -> None:
 		self.max_guesses = max_guesses
+		self.is_over = False
 
 		self.secret_word = secret_word or choice(DICTIONARY)
 		self.guesses: list[tuple[str, list[LetterValidity]]] = []
@@ -55,4 +57,10 @@ class WordleGame:
 		info = (word, check_word(word, self.secret_word))
 		self.guesses.append(info)
 
+		self.is_over = (word == self.secret_word) or (len(self.guesses) >= self.max_guesses)
+
 		return info
+	
+	def reset(self):
+		self.is_over = False
+		self.guesses.clear()
