@@ -50,10 +50,21 @@ def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 
 	return pattern
 
-def get_game_filtered_words(words_list: list[str], word: str, word_validity: list[LetterValidity]):
+def has_letters(word: str, letters: list[str]) -> bool:
+	for letter in letters:
+		if letter not in word:
+			return False
+	return True
+
+def filter_words(words_list: list[str], word: str, word_validity: list[LetterValidity]):
 	pattern = build_regex_pattern(word, word_validity)
 
-	return [word for word in words_list if match(pattern, word)]
+	existing_letters = []
+	for letter, validity in zip(word, word_validity):
+		if validity == LetterValidity.Correct or validity == LetterValidity.Exists and letter not in existing_letters:
+			existing_letters.append(letter)
+
+	return [word for word in words_list if match(pattern, word) != None and has_letters(word, existing_letters)]
 
 def extract_letter_frequencies(words_list: list[str], allow: list[str] = []) -> dict[str, int]:
 	letter_frequencies: dict[str, int] = {}
@@ -77,15 +88,8 @@ class WordleGuesser(WordlePlayer):
 		self.onlyone_letters = [] # letters that are in the word only once
 	
 	def choose_word(self) -> str:
-		# letter_frequencies: dict[str, int] = {}
-
-		# for word in self.available:
-		# 	for letter in word:
-		# 		if letter in self.unknown_letters:
-		# 			letter_frequencies[letter] = letter_frequencies.get(letter, 0) + 1
-		
-		# frequencies_list = [(key, frequency) for key, frequency in letter_frequencies.items()]
-		# frequencies_list.sort(key=lambda info: info[1], reverse=True)
+		if len(self.available) == 1:
+			return self.available[0]
 
 		letter_frequencies = extract_letter_frequencies(self.available, self.unknown_letters)
 
@@ -102,7 +106,7 @@ class WordleGuesser(WordlePlayer):
 				if letter in self.onlyone_letters and repeat_count > 1: # disregard words with confirmed repeats, if the repeat can't plausibly exist
 					word_score = -9e9
 					break
-
+				
 				repeating_letters[letter] = repeat_count + 1
 				
 				exists_in_word = letter in self.existing_letters
@@ -122,11 +126,12 @@ class WordleGuesser(WordlePlayer):
 		return words_scores[0][0] #choice(self.available)
 
 	def prompt_guess(self):
+		if len(self.available) == 0:
+			print("UNABLE TO DEDUCE WORD")
+			self.available = DICTIONARY
+
 		word, word_validity = self.game.make_guess(self.choose_word())
 		
-		old_available = self.available
-		new_available = get_game_filtered_words(old_available, word, word_validity)
-
 		for letter, validity in zip(word, word_validity):
 			if (validity != LetterValidity.Exists and validity != LetterValidity.OnlyOne) and letter in self.unknown_letters:
 				self.unknown_letters.remove(letter)
@@ -135,6 +140,6 @@ class WordleGuesser(WordlePlayer):
 			if validity == LetterValidity.OnlyOne and letter not in self.onlyone_letters:
 				self.onlyone_letters.append(letter)
 
-		self.available = new_available
+		self.available = filter_words(self.available, word, word_validity)
 		
 		return (word, word_validity)
