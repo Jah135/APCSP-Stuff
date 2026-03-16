@@ -48,11 +48,11 @@ def check_word(word: str, target: str) -> list[LetterValidity]:
 class WordleGame:
 	def __init__(self, max_guesses: int = 6, secret_word: str | None = None) -> None:
 		self.max_guesses = max_guesses
+		self.guesses: list[tuple[str, list[LetterValidity]]] = []
 		self.is_over = False
 
 		self.secret_word = secret_word or choice(DICTIONARY)
-		self.guesses: list[tuple[str, list[LetterValidity]]] = []
-	
+
 	def make_guess(self, word: str) -> tuple[str, list[LetterValidity]]:
 		info = (word, check_word(word, self.secret_word))
 		self.guesses.append(info)
