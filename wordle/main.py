@@ -33,7 +33,7 @@ def render_game(game: WordleGame) -> str:
 
 	return output
 
-game = WordleGame(max_guesses=6)
+game = WordleGame(max_guesses=6,secret_word=None)
 player = WordleGuesser(game)
 
 print(game.secret_word)

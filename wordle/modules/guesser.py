@@ -9,23 +9,27 @@ def analyze_letter_frequencies(word_list: list[str], allowed_letters: list[str])
 
 
 IGP_UNKNOWN_LETTER_MULT = 1.1
-IGP_POSITIONAL_FREQUENCY_WEIGHT = 20
-IGP_GENERAL_FREQUENCY_WEIGHT = 0
+IGP_POSITIONAL_FREQUENCY_WEIGHT = 10
+IGP_GENERAL_FREQUENCY_WEIGHT = 1
 
 DUPLICATE_PENALTY_FALLOFF = 10
+KNOWN_PENALTY = -5
+
 CONFIDENCE_FALLOFF = 0.9
-CONFIDENCE_THRESHOLD = 0.65
+CONFIDENCE_THRESHOLD = 0.72
+CONFIDENCE_GROWTH_RATE = 1.2
 
 class WordleGuesser(WordlePlayer):
 	def __init__(self, game: WordleGame) -> None:
 		self.game = game
-		self.available: list[str] = DICTIONARY
+		self.reset()
 
+	def reset(self):
+		self.available: list[str] = DICTIONARY
 		self.unknown_letters: list[str] = [char for char in "abcdefghijklmnopqrstuvwxyz"]
+		self.known_letters: list[str] = []
 		self.existing_letters: list[str] = []
 		self.invalid_letters: list[str] = []
-		# self.exists_not_in_position: dict[int, str] = {}
-		# self.correct_letters: dict[int, str] = {}
 
 	def determine_word(self) -> str:
 		if len(self.available) == 1:
@@ -34,10 +38,14 @@ class WordleGuesser(WordlePlayer):
 		scored_words: list[tuple[str, float]] = []
 		frequencies, frequencies_per_position = analyze_letter_frequencies(self.available, self.unknown_letters)
 
+		game = self.game
+		
+		# confidence grows over the span of a game to force it to make guesses instead of getting greedy with information
+		confidence = CONFIDENCE_FALLOFF ** len(self.available) + (len(game.guesses) / game.max_guesses) ** CONFIDENCE_GROWTH_RATE
+		# print(f"C:{confidence}\nA:{self.available}\nU:{self.unknown_letters}\nUF:{frequencies}")
+
 		# if we're fairly confident about the word then we can attempt to guess it
 		# otherwise try to gather more information
-		confidence = CONFIDENCE_FALLOFF ** len(self.available)
-		print(f"C:{confidence}\nA:{self.available}\nU:{self.unknown_letters}\nUF:{frequencies}")
 		if confidence >= CONFIDENCE_THRESHOLD:
 			# TODO: not entirely sure what to do here for choosing the target word
 			for word in self.available:
@@ -66,7 +74,9 @@ class WordleGuesser(WordlePlayer):
 					duplicate_letters[letter] = occurances + 1
 
 					duplicate_penalty = DUPLICATE_PENALTY_FALLOFF ** -occurances
-					score += (frequency * IGP_GENERAL_FREQUENCY_WEIGHT + positional_frequency * IGP_UNKNOWN_LETTER_MULT) * duplicate_penalty
+					known_penalty = KNOWN_PENALTY if letter in self.known_letters else 0
+
+					score += (frequency * IGP_GENERAL_FREQUENCY_WEIGHT + positional_frequency * IGP_UNKNOWN_LETTER_MULT) * duplicate_penalty + known_penalty
 				
 				for letter in self.unknown_letters:
 					if letter in word:
@@ -75,6 +85,8 @@ class WordleGuesser(WordlePlayer):
 				scored_words.append((word, score))
 
 		scored_words.sort(key=lambda x: x[1], reverse=True)
+
+		# print(scored_words)
 
 		return scored_words[0][0]
 	
@@ -87,11 +99,10 @@ class WordleGuesser(WordlePlayer):
 		correct_letters: dict[int, str] = {}
 		exists_not_in_position: dict[int, str] = {}
 		
-		# TODO: filter to words with >= the number of letters we've guessed, for example if a word has 2 A's then filter to only words with 2 A's.
-
 		for index, (letter, validity) in enumerate(zip(guessed_word, word_validity)):
 			if letter in self.unknown_letters:
 				self.unknown_letters.remove(letter)
+				self.known_letters.append(letter)
 			
 			if validity == LetterValidity.Correct or validity == LetterValidity.Exists:
 				letter_counts[letter] = letter_counts.get(letter, 0) + 1
@@ -114,24 +125,26 @@ class WordleGuesser(WordlePlayer):
 
 		# word filtering
 		for word in self.available:
-			# remove words that don't have the correct letters
-			if any(word[index] != letter for index, letter in correct_letters.items()):
-				continue
 			# remove words that contain any invalid letters
 			if any((letter in word) for letter in self.invalid_letters):
+				continue
+			# remove words that don't have the correct letters
+			if any((word[index] != letter) for index, letter in correct_letters.items()):
 				continue
 			# remove words that have letters in the wrong position
 			if any((word[index] == letter) for index, letter in exists_not_in_position.items()):
 				continue
 			# remove words that don't have letters that exist
-			if any(letter not in word for letter in self.existing_letters):
+			if any((letter not in word) for letter in self.existing_letters):
 				continue
 			# remove words that have too many letters
-			if any(word.count(letter) > count for letter, count in letter_limits.items()):
+			if any((word.count(letter) > count) for letter, count in letter_limits.items()):
 				continue
 			# remove words that have too little letters
-			if any(word.count(letter) < count for letter, count in letter_counts.items()):
+			if any((word.count(letter) < count) for letter, count in letter_counts.items()):
 				continue
+			
+			print(word)
 
 			new_available.append(word)
 

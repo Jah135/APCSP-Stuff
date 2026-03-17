@@ -45,6 +45,7 @@ class WordleGame:
 		self.max_guesses = max_guesses
 		self.guesses: list[tuple[str, list[LetterValidity]]] = []
 		self.is_over = False
+		self.is_won = False
 
 		self.secret_word = secret_word or choice(DICTIONARY)
 
@@ -53,9 +54,11 @@ class WordleGame:
 		self.guesses.append(info)
 
 		self.is_over = (word == self.secret_word) or (len(self.guesses) >= self.max_guesses)
+		self.is_won = word == self.secret_word
 
 		return info
 	
 	def reset(self):
 		self.is_over = False
+		self.is_won = False
 		self.guesses.clear()
