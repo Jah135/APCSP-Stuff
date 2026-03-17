@@ -1,8 +1,9 @@
 from random import choice
 from enum import Enum
+from dictionary import DICTIONARY
 
 class LetterValidity(Enum):
-	OnlyOne = "onlyone"
+	TooMany = "toomany"
 	Incorrect = "incorrect"
 	Exists = "exists"
 	Correct = "correct"
@@ -10,24 +11,21 @@ class LetterValidity(Enum):
 	def __repr__(self) -> str:
 		return self.name
 
-with open("dictionary.txt", "r") as f:
-	DICTIONARY = [x.strip() for x in f.readlines()]
+def check_word(guess: str, secret: str) -> list[LetterValidity]:
+	available_counts = { char:secret.count(char) for char in guess }
+	exists = {}
 
-def check_word(word: str, target: str) -> list[LetterValidity]:
-	word_validity = []
-
-	available_counts = { char:target.count(char) for char in word }
-	existed = []
-
-	for secret_char, guess_char in zip(target, word):
+	for secret_char, guess_char in zip(secret, guess):
 		if guess_char == secret_char:
 			available_counts[guess_char] -= 1
+		if guess_char in secret:
+			exists[guess_char] = True
+	
+	word_validity = []
 
-
-	for secret_char, guess_char in zip(target, word):
+	for secret_char, guess_char in zip(secret, guess):
 		is_correct = secret_char == guess_char
 		exists_in_secret = available_counts.get(guess_char, 0) > 0
-
 
 		if is_correct:
 			word_validity.append(LetterValidity.Correct)
@@ -36,12 +34,9 @@ def check_word(word: str, target: str) -> list[LetterValidity]:
 		available_counts[guess_char] -= 1
 
 		if not is_correct and exists_in_secret:
-			existed.append(guess_char)
 			word_validity.append(LetterValidity.Exists)
-		elif guess_char in existed:
-			word_validity.append(LetterValidity.OnlyOne)
 		else:
-			word_validity.append(LetterValidity.Incorrect)
+			word_validity.append(LetterValidity.Incorrect if exists.get(guess_char, False) == False else LetterValidity.TooMany)
 
 	return word_validity
 

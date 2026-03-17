@@ -1,4 +1,4 @@
-from pyansi import AnsiStyle, PaletteColor, Palette, bold
+from pyansi import AnsiStyle, PaletteColor, Palette
 from game import WordleGame, DICTIONARY
 
 ERROR_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightRed))
@@ -10,7 +10,7 @@ class WordlePlayer:
 	def __init__(self, game: WordleGame) -> None:
 		self.game = game
 	
-	def prompt_guess(self):
+	def make_guess(self):
 		while True:
 			player_guess = input("Guess: ")
 

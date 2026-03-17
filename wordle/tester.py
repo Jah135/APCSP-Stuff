@@ -1,5 +1,5 @@
-from game import WordleGame
-from auto import WordleGuesser
+from wordle.game import WordleGame
+from wordle.modules.auto import WordleGuesser
 
 def run_one_test(game: WordleGame) -> tuple[bool, str, list[str]]:
 	target_word = game.secret_word
@@ -10,7 +10,7 @@ def run_one_test(game: WordleGame) -> tuple[bool, str, list[str]]:
 	did_win = False
 
 	while not game.is_over:
-		guess, _ = guesser.prompt_guess()
+		guess, _ = guesser.make_guess()
 		did_win = guess == target_word
 		guessed_words.append(guess)
 

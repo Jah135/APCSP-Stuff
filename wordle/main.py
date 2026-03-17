@@ -1,7 +1,6 @@
 from pyansi import AnsiStyle, PaletteColor, Palette, bold
 from game import WordleGame, LetterValidity
-from player import WordlePlayer
-from auto import WordleGuesser
+from modules.guesser import WordleGuesser
 
 CORRECT_STYLE = AnsiStyle(bg=Palette(PaletteColor.BrightGreen), fg=Palette(PaletteColor.Black))
 INCORRECT_STYLE = AnsiStyle(bg=Palette(PaletteColor.BrightBlack), fg=Palette(PaletteColor.Black))
@@ -17,7 +16,7 @@ def format_guess(guess: str, guess_validity: list[LetterValidity]) -> str:
 			output += CORRECT_STYLE.apply_with_reset(display)
 		elif validity == LetterValidity.Exists:
 			output += EXISTS_STYLE.apply_with_reset(display)
-		elif validity == LetterValidity.Incorrect or validity == LetterValidity.OnlyOne:
+		elif validity == LetterValidity.Incorrect or validity == LetterValidity.TooMany:
 			output += INCORRECT_STYLE.apply_with_reset(display)
 
 	return output
@@ -37,10 +36,12 @@ def render_game(game: WordleGame) -> str:
 game = WordleGame(max_guesses=6)
 player = WordleGuesser(game)
 
+print(game.secret_word)
+
 print(f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(game.secret_word)))} letter word!\n")
 while True:
 	current_guess_index = len(game.guesses) + 1
-	word, _ = player.prompt_guess()
+	word, _ = player.make_guess()
 
 	print(render_game(game))
 

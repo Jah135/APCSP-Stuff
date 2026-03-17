@@ -1,5 +1,5 @@
 from game import WordleGame, LetterValidity, DICTIONARY
-from player import WordlePlayer
+from modules.player import WordlePlayer
 from regex import match
 from random import choice
 
@@ -7,6 +7,10 @@ VOWELS = "aeiou"
 
 VOWEL_BOOST_MULT = 1.01
 EXISTS_BOOST_MULT = 30
+# IGP = information gathering phase
+IGP_AVAILABLE_THRESHOLD = 2
+IGP_CORRECT_THRESHOLD = 0.7
+IGP_CORRECT_THRESHOLD_DEN = 1 / IGP_CORRECT_THRESHOLD
 
 def calculate_repeating_letter_weight(count: int) -> float:
 	return -(count - 1) ** 3 / 9
@@ -21,7 +25,7 @@ def build_regex_pattern(word: str, word_validity: list[LetterValidity]) -> str:
 
 		if validity == LetterValidity.Correct:
 			correct[index] = char
-		elif validity == LetterValidity.Exists or validity == LetterValidity.OnlyOne:
+		elif validity == LetterValidity.Exists or validity == LetterValidity.TooMany:
 			chars = exists.get(index, [])
 
 			if char not in chars:
@@ -56,17 +60,25 @@ def has_letters(word: str, letters: list[str]) -> bool:
 			return False
 	return True
 
-def extract_letter_frequencies(words_list: list[str], allowed_letters: list[str] = []) -> dict[str, int]:
+def analyze_letter_frequencies(word_list: list[str], allowed_letters: list[str]) -> tuple[dict[str, int], dict[int, dict[str, int]]]:
 	letter_frequencies: dict[str, int] = {}
+	frequencies_in_positions: dict[int, dict[str, int]] = {}
 
-	# TODO: change letter frequency allow list to store also position, might be better???
+	for word in word_list:
+		for position, letter in enumerate(word):
+			if letter not in allowed_letters:
+				continue
 
-	for word in words_list:
-		for letter in word:
-			if letter in allowed_letters:
-				letter_frequencies[letter] = letter_frequencies.get(letter, 0) + 1
+			position_frequencies = frequencies_in_positions.get(position)
+			if position_frequencies == None:
+				position_frequencies = {}
+				frequencies_in_positions[position] = position_frequencies
+			position_frequencies[letter] = position_frequencies.get(letter, 0) + 1
+			
+			letter_frequencies[letter] = letter_frequencies.get(letter, 0) + 1
 
-	return letter_frequencies
+
+	return (letter_frequencies, frequencies_in_positions)
 
 class WordleGuesser(WordlePlayer):
 	def __init__(self, game: WordleGame) -> None:
@@ -84,8 +96,11 @@ class WordleGuesser(WordlePlayer):
 
 		words_scores: list[tuple[str, float]] = []
 
+		game = self.game
+		current_guess = len(game.guesses)
+
 		# determine if remaining words are similar (e.g. worse, horse, morse) and try to find a word with as many possible letters as possible
-		if len(self.available) > 2 and len(self.known_letters) >= len(self.game.secret_word) * 0.7:
+		if current_guess + 1 < game.max_guesses and len(self.available) > IGP_AVAILABLE_THRESHOLD and len(self.known_letters) >= len(game.secret_word) // IGP_CORRECT_THRESHOLD_DEN:
 			search_for = []
 
 			# filter for letters that we should look for in the dictionary
@@ -94,31 +109,28 @@ class WordleGuesser(WordlePlayer):
 					if letter in word and letter not in search_for:
 						search_for.append(letter)
 			
-			for _, letter in self.known_letters.items():
-				if letter not in search_for:
-					search_for.append(letter)
+			# for _, letter in self.known_letters.items():
+			# 	if letter not in search_for:
+			# 		search_for.append(letter)
 
 			# print(self.known_letters, self.available, search_for)
 			print(self.available, search_for)
+
 			for word in DICTIONARY:
 				score = 0
 
 				for letter in search_for:
 					if letter in word:
-						score += 20 if letter not in self.known_letters else 10
+						score += 20
 
 				for letter in self.unknown_letters:
 					if letter in word:
-						score += 0
-				
-				# for _, letter in self.known_letters.items():
-				# 	if letter in word:
-				# 		score -= 6
+						score += 1
 
 				if score > 0:
 					words_scores.append((word, score))
 		else:
-			letter_frequencies = extract_letter_frequencies(self.available, self.unknown_letters)
+			letter_frequencies, _ = analyze_letter_frequencies(self.available, self.unknown_letters)
 
 			for word in self.available:
 				score = 0
@@ -151,7 +163,7 @@ class WordleGuesser(WordlePlayer):
 
 		return words_scores[0][0]
 
-	def prompt_guess(self):
+	def make_guess(self):
 		if len(self.available) == 0:
 			print("UNABLE TO DEDUCE WORD")
 			self.available = DICTIONARY
@@ -160,11 +172,11 @@ class WordleGuesser(WordlePlayer):
 		pattern = build_regex_pattern(word, word_validity)
 		
 		for index, letter, validity in zip(range(len(word)), word, word_validity):
-			if (validity != LetterValidity.Exists and validity != LetterValidity.OnlyOne) and letter in self.unknown_letters:
+			if (validity != LetterValidity.Exists and validity != LetterValidity.TooMany) and letter in self.unknown_letters:
 				self.unknown_letters.remove(letter)
 			if validity == LetterValidity.Exists and letter not in self.existing_letters:
 				self.existing_letters.append(letter)
-			if validity == LetterValidity.OnlyOne and letter not in self.onlyone_letters:
+			if validity == LetterValidity.TooMany and letter not in self.onlyone_letters:
 				self.onlyone_letters.append(letter)
 			if validity == LetterValidity.Correct:
 				self.known_letters[index] = letter
