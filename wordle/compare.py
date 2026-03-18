@@ -1,19 +1,19 @@
-from modules.guesser import WordleGuesser, WordleGame, DICTIONARY
+from modules.auto import WordleGuesser, WordleGame, DICTIONARY
 from random import choice
 
 game = WordleGame()
 guesser = WordleGuesser(game)
 
-while True:
+for word in DICTIONARY:
+    game.secret_word = choice(DICTIONARY)
+
     while not game.is_over:
         guesser.make_guess()
     
     if not game.is_won:
-        break
+        print(f"FAILED: {word}")
+    else:
+        print(f"PASSED: {word}")
 
     game.reset()
-    game.secret_word = choice(DICTIONARY)
     guesser.reset()
-
-print("failed to guess word for", game.secret_word)
-    

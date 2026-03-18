@@ -83,13 +83,16 @@ def analyze_letter_frequencies(word_list: list[str], allowed_letters: list[str])
 class WordleGuesser(WordlePlayer):
 	def __init__(self, game: WordleGame) -> None:
 		self.game = game
+		self.reset()
+
+	def reset(self):
 		self.available: list[str] = DICTIONARY
-		
 		self.unknown_letters: list[str] = [char for char in "abcdefghijklmnopqrstuvwxyz"]
 		self.known_letters: dict[int, str] = {}
 		self.existing_letters: list[str] = [] # letters that are in the word, but we don't know where
 		self.onlyone_letters: list[str] = [] # letters that are in the word only once
 	
+
 	def choose_word(self) -> str:
 		if len(self.available) == 1:
 			return self.available[0]
