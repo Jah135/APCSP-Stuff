@@ -1,7 +1,6 @@
-from game import WordleGame, LetterValidity, DICTIONARY
+from modules.game import WordleGame, LetterValidity, DICTIONARY
 from modules.player import WordlePlayer
 from regex import match
-from random import choice
 
 VOWELS = "aeiou"
 

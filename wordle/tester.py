@@ -1,5 +1,5 @@
-from wordle.game import WordleGame
-from wordle.modules.auto import WordleGuesser
+from modules.game import WordleGame
+from modules.guesser_old import WordleGuesser
 
 def run_one_test(game: WordleGame) -> tuple[bool, str, list[str]]:
 	target_word = game.secret_word

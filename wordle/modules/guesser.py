@@ -1,22 +1,21 @@
 from modules.player import WordlePlayer
-from game import WordleGame, LetterValidity, DICTIONARY
+from modules.game import WordleGame, LetterValidity, DICTIONARY
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
-ALPHABET_LIST = [l for l in ALPHABET]
+ALPHABET_LIST = {letter for letter in ALPHABET}
 
-def analyze_letter_frequencies(word_list: list[str], allowed_letters: list[str] = ALPHABET_LIST) -> tuple[dict[str, int], list[dict[str, int]]]:
-	frequencies: dict[str, int] = {letter:sum(word.count(letter) for word in word_list) for letter in allowed_letters}
-	frequencies_per_position: list[dict[str, int]] = [{letter:sum(1 for word in word_list if word[index] == letter) for letter in allowed_letters} for index in range(max(len(word) for word in word_list))]
+def analyze_letter_frequencies(word_set: list[str], allowed_letters: set[str] = ALPHABET_LIST) -> tuple[dict[str, int], list[dict[str, int]]]:
+	frequencies: dict[str, int] = {letter:sum(word.count(letter) for word in word_set) for letter in allowed_letters}
+	frequencies_per_position: list[dict[str, int]] = [{letter:sum(1 for word in word_set if word[index] == letter) for letter in allowed_letters} for index in range(max(len(word) for word in word_set))]
 
 	return (frequencies, frequencies_per_position)
-
 
 IGP_UNKNOWN_LETTER_MULT = 1.1
 IGP_POSITIONAL_FREQUENCY_WEIGHT = 10
 IGP_GENERAL_FREQUENCY_WEIGHT = 1
 
 DUPLICATE_PENALTY_FALLOFF = 10
-KNOWN_PENALTY = -5
+KNOWN_PENALTY = -20
 
 CONFIDENCE_THRESHOLD = 0.65
 CONFIDENCE_WORD_FALLOFF = 0.8
@@ -29,31 +28,36 @@ class WordleGuesser(WordlePlayer):
 		self.reset()
 
 	def reset(self):
-		self.available: list[str] = DICTIONARY
-		self.unknown_letters: list[str] = ALPHABET_LIST.copy()
-		self.known_letters: list[str] = []
-		self.invalid_letters: list[str] = []
+		self.available: list[str] = DICTIONARY.copy()
+		self.unknown_letters: set[str] = ALPHABET_LIST.copy()
+		self.known_letters: set[str] = set()
+		self.invalid_letters: set[str] = set()
+
 		self.existing_letters: dict[int, str] = {}
 		self.correct_letters: dict[int, str] = {}
 
 	def determine_word(self) -> str:
 		if len(self.available) == 1:
-			return self.available[0]
+			(word,) = self.available
+			return word
 		
 		game = self.game
 
 		scored_words: list[tuple[str, float]] = []
-		frequencies, frequencies_per_position = analyze_letter_frequencies(self.available)
+
+		look_for_letters: set[str] = {letter for word in self.available for letter in word if letter in self.unknown_letters}
+		frequencies, frequencies_per_position = analyze_letter_frequencies(self.available, look_for_letters)
+
 
 		# confidence grows over the span of a game to force it to make guesses instead of getting greedy with information
 		endgame_confidence = (len(game.guesses) / game.max_guesses) ** CONFIDENCE_ENDGAME_GROWTH_RATE
 		# confidence grows as more and more letters are eliminated, to discourage needless information gathering
-		letter_confidence = CONFIDENCE_LETTER_FALLOFF ** len(self.unknown_letters)
+		letter_confidence = CONFIDENCE_LETTER_FALLOFF ** len(look_for_letters)
 		# confidencce grows a more and more words are eliminated
 		word_confidence = CONFIDENCE_WORD_FALLOFF ** len(self.available)
 		
 		total_confidence = word_confidence + endgame_confidence + letter_confidence
-		# print(f"C:{total_confidence}\nA:{self.available}\nU:{self.unknown_letters}\nUF:{frequencies}")
+		# print(f"C:{total_confidence}\nA:{self.available}\nF:{look_for_letters}\nUF:{frequencies}")
 
 		# if we're fairly confident about the word then we can attempt to guess it
 		# otherwise try to gather more information
@@ -82,7 +86,6 @@ class WordleGuesser(WordlePlayer):
 					positional_frequency = frequencies_per_position[index].get(letter, 0)
 
 					occurances = duplicate_letters.get(letter, 0)
-
 					duplicate_letters[letter] = occurances + 1
 
 					duplicate_penalty = DUPLICATE_PENALTY_FALLOFF ** -occurances
@@ -90,7 +93,7 @@ class WordleGuesser(WordlePlayer):
 
 					score += (frequency * IGP_GENERAL_FREQUENCY_WEIGHT + positional_frequency * IGP_UNKNOWN_LETTER_MULT) * duplicate_penalty + known_penalty
 				
-				for letter in self.unknown_letters:
+				for letter in look_for_letters:
 					if letter in word:
 						score *= IGP_UNKNOWN_LETTER_MULT
 
@@ -102,8 +105,8 @@ class WordleGuesser(WordlePlayer):
 
 		return scored_words[0][0]
 	
-	def make_guess(self):
-		guessed_word, word_validity = self.game.make_guess(self.determine_word())
+	def make_guess(self, force_word: str | None = None):
+		guessed_word, word_validity = self.game.make_guess(force_word or self.determine_word())
 
 		letter_counts: dict[str, int] = {}
 		letter_limits: dict[str, int] = {}
@@ -111,13 +114,13 @@ class WordleGuesser(WordlePlayer):
 		for index, (letter, validity) in enumerate(zip(guessed_word, word_validity)):
 			if letter in self.unknown_letters:
 				self.unknown_letters.remove(letter)
-				self.known_letters.append(letter)
+				self.known_letters.add(letter)
 			
 			if validity == LetterValidity.Correct or validity == LetterValidity.Exists:
 				letter_counts[letter] = letter_counts.get(letter, 0) + 1
 			
 			if validity == LetterValidity.Incorrect and letter not in self.invalid_letters:
-				self.invalid_letters.append(letter)
+				self.invalid_letters.add(letter)
 
 			if validity == LetterValidity.Exists:
 				self.existing_letters[index] = letter
@@ -150,8 +153,6 @@ class WordleGuesser(WordlePlayer):
 			if any(True for letter, count in letter_counts.items() if (word.count(letter) < count)):
 				continue
 			
-			# print(word)
-
 			new_available.append(word)
 
 		self.available = new_available

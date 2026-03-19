@@ -1,6 +1,8 @@
 from random import choice
 from enum import Enum
-from dictionary import DICTIONARY
+
+with open("dictionary.txt", "r") as _dict:
+	DICTIONARY = [x.strip() for x in _dict.readlines()]
 
 class LetterValidity(Enum):
 	TooMany = "toomany"

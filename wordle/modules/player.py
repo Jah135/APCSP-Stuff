@@ -1,5 +1,5 @@
 from pyansi import AnsiStyle, PaletteColor, Palette
-from game import WordleGame, DICTIONARY
+from modules.game import WordleGame, DICTIONARY
 
 ERROR_STYLE = AnsiStyle(fg=Palette(PaletteColor.BrightRed))
 
