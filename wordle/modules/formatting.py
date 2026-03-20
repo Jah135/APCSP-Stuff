@@ -1,4 +1,4 @@
-from pyansi import AnsiStyle, PaletteColor, Palette
+from pyansi import AnsiStyle, PaletteColor, Palette, bold
 from modules.game import WordleGame, LetterValidity
 
 CORRECT_STYLE = AnsiStyle(bg=Palette(PaletteColor.BrightGreen), fg=Palette(PaletteColor.Black))

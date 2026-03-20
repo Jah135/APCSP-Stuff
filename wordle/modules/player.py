@@ -10,9 +10,9 @@ class WordlePlayer:
 	def __init__(self, game: WordleGame) -> None:
 		self.game = game
 	
-	def make_guess(self):
+	def make_guess(self, prompt: str = "Guess"):
 		while True:
-			player_guess = input("Guess: ")
+			player_guess = input(f"{prompt}: ")
 
 			guess_len = len(player_guess)
 			secret_len = len(self.game.secret_word)
