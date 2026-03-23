@@ -3,13 +3,16 @@ def render_table(
     col_labels: list[str],
     data_cr: list[list[str]],
     *,
-    sep: str = " | "
+    sep: str = " | ",
+    column_widths: list[int] | None = None
 ) -> str:
     all_columns = [
         ["", *row_labels],
         *([label, *data_cr[index]] for index, label in enumerate(col_labels)),
     ]
-    column_widths = [max(len(str(x)) for x in column) for column in all_columns]
+    column_widths = column_widths or [
+        max(len(str(x)) for x in column) for column in all_columns
+    ]
 
     lines = []
 
@@ -21,7 +24,7 @@ def render_table(
                 value = str(col[row_index])
             except:
                 value = ""
-            row.append(value.center(width))
+            row.append(value[:width].center(width))
         lines.append(sep + sep.join(row) + sep)
     return "\n".join(lines)
 
@@ -31,5 +34,7 @@ print(
         ["row 1", "row 2", "row 30"],
         ["col 1", "col 2"],
         [["a", "b", "z"], ["c", "d", "e"]],
+        sep="|",
+        column_widths=[16, 15, 15],
     )
 )
