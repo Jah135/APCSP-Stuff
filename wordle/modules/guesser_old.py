@@ -165,7 +165,7 @@ class WordleGuesser(WordlePlayer):
 
 		return words_scores[0][0]
 
-	def make_guess(self):
+	def prompt_word(self):
 		if len(self.available) == 0:
 			print("UNABLE TO DEDUCE WORD")
 			self.available = DICTIONARY

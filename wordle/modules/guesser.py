@@ -36,7 +36,7 @@ class WordleGuesser(WordlePlayer):
 		self.existing_letters: dict[int, str] = {}
 		self.correct_letters: dict[int, str] = {}
 
-	def determine_word(self) -> str:
+	def prompt_word(self) -> str:
 		if len(self.available) == 1:
 			(word,) = self.available
 			return word
@@ -101,13 +101,9 @@ class WordleGuesser(WordlePlayer):
 
 		scored_words.sort(key=lambda x: x[1], reverse=True)
 
-		# print(scored_words)
-
 		return scored_words[0][0]
 	
-	def make_guess(self, force_word: str | None = None):
-		guessed_word, word_validity = self.game.make_guess(force_word or self.determine_word())
-
+	def on_guess_feedback(self, guessed_word: str, word_validity: list[LetterValidity]):
 		letter_counts: dict[str, int] = {}
 		letter_limits: dict[str, int] = {}
 
@@ -156,5 +152,3 @@ class WordleGuesser(WordlePlayer):
 			new_available.append(word)
 
 		self.available = new_available
-
-		return (guessed_word, word_validity)

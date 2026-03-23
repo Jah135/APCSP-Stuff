@@ -7,7 +7,7 @@ for word in DICTIONARY:
     game.secret_word = word
 
     while not game.is_over:
-        guesser.make_guess()
+        guesser.prompt_word()
     
     if not game.is_won:
         print(f"FAILED: {word}")

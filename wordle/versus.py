@@ -1,50 +1,105 @@
 from modules.formatting import format_guess, bold
 from modules.game import WordleGame, DICTIONARY, choice
 from modules.guesser import WordleGuesser
-from modules.player import WordlePlayer
+from modules.player import WordlePlayer, HumanWordlePlayer
+from modules.names import get_first_name
 
-target_word = choice(DICTIONARY)
+MAX_GUESSES = 6
+TARGET_WORD = choice(DICTIONARY)
+DISPLAY_GUESS_WIDTH = len(TARGET_WORD) * 3
+BOT_COUNT = 8
 
-def format_games(human_game: WordleGame, bot_game: WordleGame) -> str:
-	lines = []
+VersusPlayer = tuple[WordlePlayer, WordleGame, str]
 
-	display_games = (human_game, bot_game)
 
-	for index in range(max(len(game.guesses) for game in display_games)):
-		line = f"{index + 1} > "
-		for game in display_games:
-			try:
-				word, validity = game.guesses[index]
-				display_word = "?" * len(target_word) if game != human_game and not human_game.is_over else word
-				line += format_guess(display_word, validity) + "  "
-			except:
-				line += " " * (len(target_word) * 3) + "  "
-		lines.append(line)
+def render_games(
+    games: list[WordleGame], labels: list[str], hidden_games: set[WordleGame]
+) -> str:
+    lines = []
 
-	return "\n".join(lines)
+    label_line = "    "
 
-bot_game = WordleGame(secret_word=target_word)
-bot_player = WordleGuesser(bot_game)
+    for label in labels:
+        label_line += label.capitalize().ljust(DISPLAY_GUESS_WIDTH + 2)
 
-human_game = WordleGame(secret_word=target_word)
-human_player = WordlePlayer(human_game)
+    lines.append(label_line)
 
-print(f"\033[H\033[2J{bold("Versus Wordle")}\nGuess the secret {bold(str(len(target_word)))} letter word before the bot!\n")
+    for index in range(max(len(game.guesses) for game in games)):
+        line = f"{index + 1} > "
+        for game in games:
+            try:
+                word, validity = game.guesses[index]
+                display_word = "?" * len(TARGET_WORD) if game in hidden_games else word
+                line += format_guess(display_word, validity) + "  "
+            except:
+                line += " " * DISPLAY_GUESS_WIDTH + "  "
+        lines.append(line)
 
-while not human_game.is_over:
-	if not bot_game.is_over:
-		bot_player.make_guess(None if len(bot_game.guesses) > 0 else choice(DICTIONARY))
-		print("Bot has made guess.")
+    return "\n".join(lines)
 
-	human_player.make_guess("Your guess")
 
-	print("\x1b[2J\x1b[H" + format_games(human_game, bot_game))
+def get_placings(players: list[VersusPlayer]):
+    scores: list[tuple[str, int]] = []
 
-if human_game.is_won == bot_game.is_won and len(human_game.guesses) == len(bot_game.guesses):
-	print("You tied with the bot!")
-elif human_game.is_won and len(human_game.guesses) <= len(bot_game.guesses):
-	print("You won!")
-else:
-	print("You lost to the bot!")
+    for player in players:
+        _, game, label = player
+        score = MAX_GUESSES - len(game.guesses) + 20 if game.is_won else 0
+        scores.append((label, score))
 
-print(f"The word was {bold(target_word)}.")
+    scores.sort(key=lambda x: x[1], reverse=True)
+
+    return scores
+
+
+bot_players: list[VersusPlayer] = []
+
+for _ in range(BOT_COUNT):
+    bot_game = WordleGame(max_guesses=MAX_GUESSES, secret_word=TARGET_WORD)
+    bot_player = WordleGuesser(bot_game)
+    bot_players.append((bot_player, bot_game, get_first_name()))
+
+human_game = WordleGame(max_guesses=MAX_GUESSES, secret_word=TARGET_WORD)
+human_player = HumanWordlePlayer(len(TARGET_WORD))
+
+print(
+    f"\033[H\033[2J{bold("Versus Wordle")}\nGuess the secret {bold(str(len(TARGET_WORD)))} letter word before the bots!\n"
+)
+
+bot_games = [bot[1] for bot in bot_players]
+all_games = [human_game, *bot_games]
+all_players: list[VersusPlayer] = [(human_player, human_game, "you"), *bot_players]
+
+while not (human_game.is_over and all(game.is_over for game in bot_games)):
+    for bot in bot_players:
+        bot_player, bot_game, label = bot
+        if not bot_game.is_over:
+            bot_player.on_guess_feedback(
+                *bot_game.make_guess(
+                    bot_player.prompt_word()
+                    if len(bot_game.guesses) > 0
+                    else choice(DICTIONARY)
+                )
+            )
+            print(f"{label} has guessed")
+
+    if not human_game.is_over:
+        human_player.on_guess_feedback(
+            *human_game.make_guess(human_player.prompt_word("Your guess"))
+        )
+
+    print(
+        "\x1b[2J\x1b[H\n"
+        + render_games(
+            all_games,
+            [player[2] for player in all_players],
+            set() if human_game.is_over else set(bot_games),
+        )
+    )
+
+
+print(f"The word was {bold(TARGET_WORD)}.")
+
+placings = get_placings(all_players)
+
+for place_index, player in enumerate(placings):
+    print(f"#{place_index + 1}. {player[0].capitalize()}")
