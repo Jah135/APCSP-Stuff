@@ -1,4 +1,4 @@
-from wordle import WordleGame, LetterValidity, WordlePlayer
+from wordle import LocalWordleGame, LetterValidity, WordlePlayer
 from regex import match
 
 VOWELS = "aeiou"
@@ -85,12 +85,13 @@ def analyze_letter_frequencies(
 
 
 class WordleGuesser(WordlePlayer):
-    def __init__(self, game: WordleGame) -> None:
+    def __init__(self, game: LocalWordleGame, valid_dictionary: list[str]) -> None:
         self.game = game
+        self.valid_dictionary = valid_dictionary
         self.reset()
 
     def reset(self):
-        self.available: list[str] = DICTIONARY
+        self.available: list[str] = self.valid_dictionary
         self.unknown_letters: list[str] = [
             char for char in "abcdefghijklmnopqrstuvwxyz"
         ]
@@ -100,14 +101,14 @@ class WordleGuesser(WordlePlayer):
         )  # letters that are in the word, but we don't know where
         self.onlyone_letters: list[str] = []  # letters that are in the word only once
 
-    def choose_word(self) -> str:
+    def prompt_word(self) -> str:
         if len(self.available) == 1:
             return self.available[0]
 
         words_scores: list[tuple[str, float]] = []
 
         game = self.game
-        current_guess = len(game.guesses)
+        current_guess = len(game.guess_history)
 
         # determine if remaining words are similar (e.g. worse, horse, morse) and try to find a word with as many possible letters as possible
         if (
@@ -131,7 +132,7 @@ class WordleGuesser(WordlePlayer):
             # print(self.known_letters, self.available, search_for)
             print(self.available, search_for)
 
-            for word in DICTIONARY:
+            for word in self.valid_dictionary:
                 score = 0
 
                 for letter in search_for:
@@ -189,15 +190,16 @@ class WordleGuesser(WordlePlayer):
 
         return words_scores[0][0]
 
-    def prompt_word(self):
+    def on_guess_feedback(self, guessed_word: str, word_validity: list[LetterValidity]):
         if len(self.available) == 0:
             print("UNABLE TO DEDUCE WORD")
-            self.available = DICTIONARY
+            self.available = self.valid_dictionary
 
-        word, word_validity = self.game.make_guess(self.choose_word())
-        pattern = build_regex_pattern(word, word_validity)
+        pattern = build_regex_pattern(guessed_word, word_validity)
 
-        for index, letter, validity in zip(range(len(word)), word, word_validity):
+        for index, letter, validity in zip(
+            range(len(guessed_word)), guessed_word, word_validity
+        ):
             if (
                 validity != LetterValidity.Exists and validity != LetterValidity.TooMany
             ) and letter in self.unknown_letters:
@@ -220,5 +222,3 @@ class WordleGuesser(WordlePlayer):
             for word in self.available
             if match(pattern, word) != None and has_letters(word, self.existing_letters)
         ]
-
-        return (word, word_validity)

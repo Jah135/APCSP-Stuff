@@ -32,19 +32,6 @@ def format_guess(guess: str, guess_validity: list[LetterValidity]) -> str:
     )
 
 
-def render_game(game: LocalWordleGame) -> str:
-    output = "\x1b[2J\x1b[H\n"
-
-    for guess_index, guess in enumerate(game.guess_history):
-        word, word_validity = guess
-
-        output += f"{guess_index + 1} > {format_guess(word, word_validity)}\n"
-
-    output += "\n"
-
-    return output
-
-
 KEYBOARD_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")
 
 

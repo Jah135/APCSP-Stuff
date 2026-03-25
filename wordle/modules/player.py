@@ -9,7 +9,7 @@ def error(text: str):
     print(ERROR_STYLE.apply_with_reset(text))
 
 
-class HumanWordlePlayer(WordlePlayer):
+class LocalWordlePlayer(WordlePlayer):
     def __init__(self, word_length: int, valid_dictionary: list[str]) -> None:
         self.word_length = word_length
         self.valid_dictionary = valid_dictionary

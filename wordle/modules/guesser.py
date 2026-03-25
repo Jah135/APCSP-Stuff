@@ -1,11 +1,23 @@
 from wordle import LocalWordleGame, LetterValidity, WordlePlayer
 
-ALPHABET = "abcdefghijklmnopqrstuvwxyz"
-ALPHABET_LIST = {letter for letter in ALPHABET}
+ALPHASET = {letter for letter in "abcdefghijklmnopqrstuvwxyz"}
+
+IGP_UNKNOWN_LETTER_MULT = 1.9
+IGP_UNKNOWN_LETTER_FLAT = 20
+IGP_POSITIONAL_FREQUENCY_WEIGHT = 10
+IGP_GENERAL_FREQUENCY_WEIGHT = 1
+
+DUPLICATE_PENALTY_FALLOFF = 10
+KNOWN_LETTER_PENALTY = 0
+
+CONFIDENCE_THRESHOLD = 0.67
+CONFIDENCE_WORD_FALLOFF = 0.74
+CONFIDENCE_LETTER_FALLOFF = 0.58
+CONFIDENCE_ENDGAME_GROWTH_RATE = 10
 
 
 def analyze_letter_frequencies(
-    word_set: list[str], allowed_letters: set[str] = ALPHABET_LIST
+    word_set: list[str], allowed_letters: set[str] = ALPHASET
 ) -> tuple[dict[str, int], list[dict[str, int]]]:
     frequencies: dict[str, int] = {
         letter: sum(word.count(letter) for word in word_set)
@@ -22,19 +34,6 @@ def analyze_letter_frequencies(
     return (frequencies, frequencies_per_position)
 
 
-IGP_UNKNOWN_LETTER_MULT = 1.1
-IGP_POSITIONAL_FREQUENCY_WEIGHT = 10
-IGP_GENERAL_FREQUENCY_WEIGHT = 1
-
-DUPLICATE_PENALTY_FALLOFF = 10
-KNOWN_PENALTY = -20
-
-CONFIDENCE_THRESHOLD = 0.65
-CONFIDENCE_WORD_FALLOFF = 0.8
-CONFIDENCE_LETTER_FALLOFF = 0.8
-CONFIDENCE_ENDGAME_GROWTH_RATE = 10
-
-
 class WordleGuesser(WordlePlayer):
     def __init__(self, game: LocalWordleGame, valid_dictionary: list[str]) -> None:
         self.game = game
@@ -43,7 +42,7 @@ class WordleGuesser(WordlePlayer):
 
     def reset(self):
         self.available: list[str] = self.valid_dictionary.copy()
-        self.unknown_letters: set[str] = ALPHABET_LIST.copy()
+        self.unknown_letters: set[str] = ALPHASET.copy()
         self.known_letters: set[str] = set()
         self.invalid_letters: set[str] = set()
 
@@ -52,8 +51,7 @@ class WordleGuesser(WordlePlayer):
 
     def prompt_word(self) -> str:
         if len(self.available) == 1:
-            (word,) = self.available
-            return word
+            return self.available[0]
 
         game = self.game
 
@@ -80,6 +78,8 @@ class WordleGuesser(WordlePlayer):
 
         total_confidence = word_confidence + endgame_confidence + letter_confidence
         # print(f"C:{total_confidence}\nA:{self.available}\nF:{look_for_letters}\nUF:{frequencies}")
+        # print(endgame_confidence, letter_confidence, word_confidence, total_confidence)
+        # print(look_for_letters, self.available)
 
         # if we're fairly confident about the word then we can attempt to guess it
         # otherwise try to gather more information
@@ -113,7 +113,9 @@ class WordleGuesser(WordlePlayer):
                     duplicate_letters[letter] = occurances + 1
 
                     duplicate_penalty = DUPLICATE_PENALTY_FALLOFF**-occurances
-                    known_penalty = KNOWN_PENALTY if letter in self.known_letters else 0
+                    known_penalty = (
+                        KNOWN_LETTER_PENALTY if letter in self.known_letters else 0
+                    )
 
                     score += (
                         frequency * IGP_GENERAL_FREQUENCY_WEIGHT
@@ -122,6 +124,7 @@ class WordleGuesser(WordlePlayer):
 
                 for letter in look_for_letters:
                     if letter in word:
+                        score += IGP_UNKNOWN_LETTER_FLAT
                         score *= IGP_UNKNOWN_LETTER_MULT
 
                 scored_words.append((word, score))

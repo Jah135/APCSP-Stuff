@@ -1,12 +1,26 @@
 from pyansi import bold
-from modules.formatting import render_game
-from modules.player import HumanWordlePlayer
+from modules.formatting import format_guess
+from modules.guesser import WordleGuesser
+from modules.dictionary import DICTIONARY
 from wordle import LocalWordleGame
 from random import choice
-from modules.guesser import WordleGuesser
 
-game = LocalWordleGame(choice(WORD_DICTIONARY), max_guesses=6)
-player = WordleGuesser(game, PLAYABLE_DICTIONARY)
+
+def render_game(game: LocalWordleGame) -> str:
+    output = "\x1b[2J\x1b[H\n"
+
+    for guess_index, guess in enumerate(game.guess_history):
+        word, word_validity = guess
+
+        output += f"{guess_index + 1} > {format_guess(word, word_validity)}\n"
+
+    output += "\n"
+
+    return output
+
+
+game = LocalWordleGame(choice(DICTIONARY), max_guesses=6)
+player = WordleGuesser(game, DICTIONARY)
 
 print(
     f"\033[H\033[2J{bold("Simple Wordle")}\nGuess the secret {bold(str(len(game.secret_word)))} letter word!\n"
