@@ -1,4 +1,4 @@
-from modules.formatting import format_guess, bold
+from modules.formatting import format_guess, bold, render_table
 from modules.guesser import WordleGuesser
 from modules.player import WordlePlayer, LocalWordlePlayer
 from modules.names import get_first_name
@@ -15,29 +15,27 @@ VersusPlayer = tuple[WordlePlayer, LocalWordleGame, str]
 
 
 def render_games(
-    games: list[LocalWordleGame], labels: list[str], hidden_games: set[LocalWordleGame]
+    games: list[LocalWordleGame],
+    game_labels: list[str],
+    hidden_games: set[LocalWordleGame],
 ) -> str:
-    lines = []
-
-    label_line = "    "
-
-    for label in labels:
-        label_line += label.capitalize().ljust(DISPLAY_GUESS_WIDTH + 2)
-
-    lines.append(label_line)
-
-    for index in range(max(len(game.guess_history) for game in games)):
-        line = f"{index + 1} > "
-        for game in games:
-            try:
-                word, validity = game.guess_history[index]
-                display_word = "?" * len(TARGET_WORD) if game in hidden_games else word
-                line += format_guess(display_word, validity) + "  "
-            except:
-                line += " " * DISPLAY_GUESS_WIDTH + "  "
-        lines.append(line)
-
-    return "\n".join(lines)
+    return render_table(
+        [
+            f"{index + 1} >"
+            for index in range(max(len(game.guess_history) for game in games))
+        ],
+        game_labels,
+        [
+            [
+                format_guess(
+                    word if game not in hidden_games else "?" * len(word), validity
+                )
+                for (word, validity) in game.guess_history
+            ]
+            for game in games
+        ],
+        sep=" ",
+    )
 
 
 def get_placings(players: list[VersusPlayer]):
@@ -45,7 +43,7 @@ def get_placings(players: list[VersusPlayer]):
 
     for player in players:
         _, game, label = player
-        score = MAX_GUESSES - len(game.guess_history) + 20 if game.is_win else 0
+        score = MAX_GUESSES - len(game.guess_history) + 20 if game.is_won else 0
         scores.append((label, score))
 
     scores.sort(key=lambda x: x[1], reverse=True)

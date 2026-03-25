@@ -33,7 +33,7 @@ while True:
 
     print(render_game(game))
 
-    if game.is_win:
+    if game.is_won:
         print("You guessed the word!")
         break
 

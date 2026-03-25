@@ -1,4 +1,4 @@
-from pyansi import AnsiStyle, PaletteColor, Palette, bold
+from pyansi import AnsiStyle, PaletteColor, Palette, bold, remove_ansi
 from wordle import LocalWordleGame, LetterValidity
 
 CORRECT_STYLE = AnsiStyle(
@@ -44,3 +44,33 @@ def render_keyboard(validity: dict[str, LetterValidity]):
         ) + "\n"
 
     return output
+
+
+def render_table(
+    row_labels: list[str],
+    col_labels: list[str],
+    data_colrow: list[list[str]],
+    *,
+    sep: str = " | ",
+) -> str:
+    all_columns = [
+        ["", *row_labels],
+        *([label, *data_colrow[index]] for index, label in enumerate(col_labels)),
+    ]
+    column_widths = [
+        max(len(remove_ansi(str(x))) for x in column) for column in all_columns
+    ]
+
+    lines = []
+
+    for row_index in range(len(row_labels) + 1):
+        row = []
+
+        for width, col in zip(column_widths, all_columns):
+            try:
+                value = str(col[row_index])
+            except:
+                value = ""
+            row.append(value.center(width))
+        lines.append(sep + sep.join(row) + sep)
+    return "\n".join(lines)
