@@ -1,41 +1,41 @@
-from modules.formatting import format_guess, bold
-from modules.game import WordleGame, DICTIONARY, choice
+from modules.formatting import format_guess, bold, render_table
 from modules.guesser import WordleGuesser
-from modules.player import WordlePlayer, HumanWordlePlayer
+from modules.player import WordlePlayer, LocalWordlePlayer
 from modules.names import get_first_name
+from modules.dictionary import DICTIONARY
+from wordle import LocalWordleGame
+from random import choice
 
 MAX_GUESSES = 6
 TARGET_WORD = choice(DICTIONARY)
 DISPLAY_GUESS_WIDTH = len(TARGET_WORD) * 3
 BOT_COUNT = 8
 
-VersusPlayer = tuple[WordlePlayer, WordleGame, str]
+VersusPlayer = tuple[WordlePlayer, LocalWordleGame, str]
 
 
 def render_games(
-    games: list[WordleGame], labels: list[str], hidden_games: set[WordleGame]
+    games: list[LocalWordleGame],
+    game_labels: list[str],
+    hidden_games: set[LocalWordleGame],
 ) -> str:
-    lines = []
-
-    label_line = "    "
-
-    for label in labels:
-        label_line += label.capitalize().ljust(DISPLAY_GUESS_WIDTH + 2)
-
-    lines.append(label_line)
-
-    for index in range(max(len(game.guesses) for game in games)):
-        line = f"{index + 1} > "
-        for game in games:
-            try:
-                word, validity = game.guesses[index]
-                display_word = "?" * len(TARGET_WORD) if game in hidden_games else word
-                line += format_guess(display_word, validity) + "  "
-            except:
-                line += " " * DISPLAY_GUESS_WIDTH + "  "
-        lines.append(line)
-
-    return "\n".join(lines)
+    return render_table(
+        [
+            f"{index + 1} >"
+            for index in range(max(len(game.guess_history) for game in games))
+        ],
+        game_labels,
+        [
+            [
+                format_guess(
+                    word if game not in hidden_games else "?" * len(word), validity
+                )
+                for (word, validity) in game.guess_history
+            ]
+            for game in games
+        ],
+        sep=" ",
+    )
 
 
 def get_placings(players: list[VersusPlayer]):
@@ -43,7 +43,7 @@ def get_placings(players: list[VersusPlayer]):
 
     for player in players:
         _, game, label = player
-        score = MAX_GUESSES - len(game.guesses) + 20 if game.is_won else 0
+        score = MAX_GUESSES - len(game.guess_history) + 20 if game.is_won else 0
         scores.append((label, score))
 
     scores.sort(key=lambda x: x[1], reverse=True)
@@ -54,12 +54,12 @@ def get_placings(players: list[VersusPlayer]):
 bot_players: list[VersusPlayer] = []
 
 for _ in range(BOT_COUNT):
-    bot_game = WordleGame(max_guesses=MAX_GUESSES, secret_word=TARGET_WORD)
-    bot_player = WordleGuesser(bot_game)
+    bot_game = LocalWordleGame(max_guesses=MAX_GUESSES, secret_word=TARGET_WORD)
+    bot_player = WordleGuesser(bot_game, DICTIONARY)
     bot_players.append((bot_player, bot_game, get_first_name()))
 
-human_game = WordleGame(max_guesses=MAX_GUESSES, secret_word=TARGET_WORD)
-human_player = HumanWordlePlayer(len(TARGET_WORD))
+human_game = LocalWordleGame(max_guesses=MAX_GUESSES, secret_word=TARGET_WORD)
+human_player = LocalWordlePlayer(len(TARGET_WORD), DICTIONARY)
 
 print(
     f"\033[H\033[2J{bold("Versus Wordle")}\nGuess the secret {bold(str(len(TARGET_WORD)))} letter word before the bots!\n"
@@ -69,20 +69,20 @@ bot_games = [bot[1] for bot in bot_players]
 all_games = [human_game, *bot_games]
 all_players: list[VersusPlayer] = [(human_player, human_game, "you"), *bot_players]
 
-while not (human_game.is_over and all(game.is_over for game in bot_games)):
+while not (human_game.is_done and all(game.is_done for game in bot_games)):
     for bot in bot_players:
         bot_player, bot_game, label = bot
-        if not bot_game.is_over:
+        if not bot_game.is_done:
             bot_player.on_guess_feedback(
                 *bot_game.make_guess(
                     bot_player.prompt_word()
-                    if len(bot_game.guesses) > 0
+                    if len(bot_game.guess_history) > 0
                     else choice(DICTIONARY)
                 )
             )
             print(f"{label} has guessed")
 
-    if not human_game.is_over:
+    if not human_game.is_done:
         human_player.on_guess_feedback(
             *human_game.make_guess(human_player.prompt_word("Your guess"))
         )
@@ -92,7 +92,7 @@ while not (human_game.is_over and all(game.is_over for game in bot_games)):
         + render_games(
             all_games,
             [player[2] for player in all_players],
-            set() if human_game.is_over else set(bot_games),
+            set() if human_game.is_done else set(bot_games),
         )
     )
 
