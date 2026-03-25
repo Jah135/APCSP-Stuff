@@ -21,10 +21,10 @@ def render_games(
 ) -> str:
     return render_table(
         [
-            f"{index + 1} >"
+            f" Guess {index + 1} "
             for index in range(max(len(game.guess_history) for game in games))
         ],
-        game_labels,
+        [label.capitalize() for label in game_labels],
         [
             [
                 format_guess(
@@ -34,7 +34,7 @@ def render_games(
             ]
             for game in games
         ],
-        sep=" ",
+        sep="│",
     )
 
 

@@ -38,10 +38,12 @@ KEYBOARD_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")
 def render_keyboard(validity: dict[str, LetterValidity]):
     output = ""
 
-    for row in KEYBOARD_ROWS:
+    for i, row in enumerate(KEYBOARD_ROWS):
         output += (
-            "".join(format_letter(letter, validity.get(letter)) for letter in row)
-        ) + "\n"
+            "  " * i
+            + ("".join(format_letter(letter, validity.get(letter)) for letter in row))
+            + "\n"
+        )
 
     return output
 
