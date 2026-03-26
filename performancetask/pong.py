@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import pygame
-from pygame import Rect
-from pygame.time import Clock
-from pygame import draw, display, event, key
-from pygame import K_w as KEY_W, K_s as KEY_S, K_UP as KEY_UP, K_DOWN as KEY_DOWN
+from pygame import draw, display, event, key, time
+from pygame import (
+    Rect,
+    Surface,
+    K_w as KEY_W,
+    K_s as KEY_S,
+    K_UP as KEY_UP,
+    K_DOWN as KEY_DOWN,
+)
 
 from random import randint
 
@@ -34,7 +39,7 @@ class Player(Entity):
     width = 10
     height = 100
 
-    def __init__(self, surface: pygame.Surface) -> None:
+    def __init__(self, surface: Surface) -> None:
         super().__init__()
         self.surface = surface
         self.x = 0
@@ -58,7 +63,7 @@ class Player(Entity):
 
 
 class HumanPlayer(Player):
-    def __init__(self, surface: pygame.Surface, up_key: int, down_key: int) -> None:
+    def __init__(self, surface: Surface, up_key: int, down_key: int) -> None:
         super().__init__(surface)
         self.up_key = up_key
         self.down_key = down_key
@@ -81,7 +86,7 @@ class Ball(Entity):
 
     def __init__(
         self,
-        surface: pygame.Surface,
+        surface: Surface,
         position: tuple[int, int] = (0, 0),
         velocity: tuple[int, int] = (0, 0),
     ) -> None:
@@ -146,7 +151,7 @@ def update_scene(dt: float):
         entity.update(dt)
 
 
-clock = Clock()
+clock = time.Clock()
 
 running = True
 
