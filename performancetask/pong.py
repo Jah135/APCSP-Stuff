@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pygame
-from pygame import draw, display, event, key, time
+from pygame import draw, display, event, key, time, font
 from pygame import (
     Rect,
     Surface,
@@ -105,13 +105,16 @@ class Ball(Entity):
             if not isinstance(other, Player):
                 continue
             if (
-                self.x - self.radius <= other.x + other.width
-                and self.x + self.radius >= other.x
-                and self.y - self.radius <= other.y + other.height
-                and self.y + self.radius >= other.y
+                self.y - self.radius <= other.y
+                or self.y + self.radius >= other.y + other.height
             ):
+                continue
+            if (
+                other.x < self.x
+                and self.x - self.radius <= other.x + other.width
+                and self.dx < 0
+            ) or (other.x > self.x and self.x + self.radius >= other.x and self.dx > 0):
                 self.dx *= -1
-                # self.dy += (other.dy / dt) // 2
 
         self.x += round(self.dx * dt)
         self.y += round(self.dy * dt)
@@ -125,11 +128,12 @@ pygame.init()
 active_screen = display.set_mode(SCREEN_SIZE)
 display.set_caption("Pong")
 
+current_font = font.SysFont(None, size=50)
 
 ball = Ball(
     active_screen,
     position=(SCREEN_SIZE[0] // 2, SCREEN_SIZE[1] // 2),
-    velocity=(randint(190, 270), randint(80, 190)),
+    velocity=(-200, 0),
 )
 player1 = HumanPlayer(active_screen, KEY_W, KEY_S)
 player1.x = 20
@@ -141,8 +145,13 @@ player2.x = SCREEN_SIZE[0] - 30
 
 def draw_scene():
     active_screen.fill("black")
+
     for entity in ENTITIES:
         entity.draw()
+
+    text_surface = current_font.render("Hello", True, "white")
+    active_screen.blit(text_surface)
+
     display.flip()
 
 
