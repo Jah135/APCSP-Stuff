@@ -98,23 +98,28 @@ class Ball(Entity):
         self.dy = velocity[1]
 
     def update(self, dt: float):
-        if self.y - self.radius <= 0 or self.y + self.radius >= SCREEN_SIZE[1]:
+        if (self.y - self.radius <= 0 and self.dy < 0) or (
+            self.y + self.radius >= SCREEN_SIZE[1] and self.dy > 0
+        ):
             self.dy *= -1
 
-        for other in ENTITIES:
-            if not isinstance(other, Player):
+        for paddle in ENTITIES:
+            if not isinstance(paddle, Player):
                 continue
             if (
-                self.y - self.radius <= other.y
-                or self.y + self.radius >= other.y + other.height
+                self.y + self.radius <= paddle.y
+                or self.y - self.radius >= paddle.y + paddle.height
             ):
                 continue
             if (
-                other.x < self.x
-                and self.x - self.radius <= other.x + other.width
+                paddle.x < self.x
+                and self.x - self.radius <= paddle.x + paddle.width
                 and self.dx < 0
-            ) or (other.x > self.x and self.x + self.radius >= other.x and self.dx > 0):
+            ) or (
+                paddle.x > self.x and self.x + self.radius >= paddle.x and self.dx > 0
+            ):
                 self.dx *= -1
+                self.dy += paddle.dy / dt / 8
 
         self.x += round(self.dx * dt)
         self.y += round(self.dy * dt)
@@ -133,7 +138,7 @@ current_font = font.SysFont(None, size=50)
 ball = Ball(
     active_screen,
     position=(SCREEN_SIZE[0] // 2, SCREEN_SIZE[1] // 2),
-    velocity=(-200, 0),
+    velocity=(-500, randint(-100, 100)),
 )
 player1 = HumanPlayer(active_screen, KEY_W, KEY_S)
 player1.x = 20
@@ -150,7 +155,7 @@ def draw_scene():
         entity.draw()
 
     text_surface = current_font.render("Hello", True, "white")
-    active_screen.blit(text_surface)
+    active_screen.blit(text_surface, (0, 0))
 
     display.flip()
 
