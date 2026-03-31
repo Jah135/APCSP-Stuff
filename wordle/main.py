@@ -1,8 +1,8 @@
 from pyansi import bold
-from modules.formatting import format_guess
 from modules.guesser import WordleGuesser
 from modules.dictionary import DICTIONARY
 from wordle import LocalWordleGame
+from wordle.formatting import format_guess
 from random import choice
 
 
@@ -10,9 +10,7 @@ def render_game(game: LocalWordleGame) -> str:
     output = "\x1b[2J\x1b[H\n"
 
     for guess_index, guess in enumerate(game.guess_history):
-        word, word_validity = guess
-
-        output += f"{guess_index + 1} > {format_guess(word, word_validity)}\n"
+        output += f"{guess_index + 1} > {format_guess(guess)}\n"
 
     output += "\n"
 

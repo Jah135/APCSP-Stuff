@@ -1,5 +1,6 @@
 from wordle import WordleGame, LetterValidity, get_word_validity
 from wordle.game import Guess
+from wordle.formatting import format_guess
 
 
 def merge_validities(*values: list[LetterValidity]):
@@ -34,10 +35,17 @@ class XordleGame(WordleGame):
         return guess
 
 
-game = XordleGame(["horse", "crane"])
+secret_words = ["brain", "storm"]
+game = XordleGame(secret_words)
+game.make_guess("study")
 
+while not game.is_done:
+    for guess in game.guess_history:
+        print(format_guess(guess))
 
-print(game.make_guess("crane"))
-print(game.is_done, game.is_won)
-print(game.make_guess("horse"))
-print(game.is_done, game.is_won)
+    game.make_guess(input("> "))
+
+for guess in game.guess_history:
+    print(format_guess(guess))
+
+print(f"The secret words were {', '.join(secret_words)}")

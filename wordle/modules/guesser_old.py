@@ -91,7 +91,7 @@ class WordleGuesser(WordlePlayer):
         self.reset()
 
     def reset(self):
-        self.available: list[str] = self.valid_dictionary
+        self.available: list[str] = self.valid_dictionary.copy()
         self.unknown_letters: list[str] = [
             char for char in "abcdefghijklmnopqrstuvwxyz"
         ]

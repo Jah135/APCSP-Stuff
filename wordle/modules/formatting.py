@@ -1,35 +1,6 @@
-from pyansi import AnsiStyle, PaletteColor, Palette, bold, remove_ansi
-from wordle import LocalWordleGame, LetterValidity
-
-CORRECT_STYLE = AnsiStyle(
-    bg=Palette(PaletteColor.BrightGreen), fg=Palette(PaletteColor.Black)
-)
-INCORRECT_STYLE = AnsiStyle(
-    bg=Palette(PaletteColor.BrightBlack), fg=Palette(PaletteColor.Black)
-)
-EXISTS_STYLE = AnsiStyle(
-    bg=Palette(PaletteColor.Yellow), fg=Palette(PaletteColor.Black)
-)
-NEUTRAL_STYLE = AnsiStyle(
-    bg=Palette(PaletteColor.White), fg=Palette(PaletteColor.Black)
-)
-
-
-def format_letter(char: str, validity: LetterValidity | None = None) -> str:
-    display = f" {char.upper()} "
-    if validity == None:
-        return NEUTRAL_STYLE.apply_with_reset(display)
-    elif validity == LetterValidity.Correct:
-        return CORRECT_STYLE.apply_with_reset(display)
-    elif validity == LetterValidity.Exists:
-        return EXISTS_STYLE.apply_with_reset(display)
-    return INCORRECT_STYLE.apply_with_reset(display)
-
-
-def format_guess(guess: str, guess_validity: list[LetterValidity]) -> str:
-    return "".join(
-        format_letter(char, validity) for char, validity in zip(guess, guess_validity)
-    )
+from pyansi import bold, remove_ansi
+from wordle import LetterValidity
+from wordle.formatting import format_letter
 
 
 KEYBOARD_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")
@@ -54,6 +25,7 @@ def render_table(
     data_colrow: list[list[str]],
     *,
     sep: str = " | ",
+    with_borders=True,
 ) -> str:
     all_columns = [
         ["", *row_labels],
@@ -74,5 +46,8 @@ def render_table(
             except:
                 value = ""
             row.append(value.center(width))
-        lines.append(sep + sep.join(row) + sep)
+        line = sep.join(row)
+        if with_borders:
+            line = sep + line + sep
+        lines.append(line)
     return "\n".join(lines)

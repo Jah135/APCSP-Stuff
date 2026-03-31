@@ -1,14 +1,14 @@
-from modules.formatting import format_guess, bold, render_table
+from modules.formatting import bold, render_table
 from modules.guesser import WordleGuesser
 from modules.player import WordlePlayer, LocalWordlePlayer
 from modules.names import get_first_name
 from modules.dictionary import DICTIONARY
 from wordle import LocalWordleGame
+from wordle.formatting import format_guess
 from random import choice
 
 MAX_GUESSES = 6
 TARGET_WORD = choice(DICTIONARY)
-DISPLAY_GUESS_WIDTH = len(TARGET_WORD) * 3
 BOT_COUNT = 8
 
 VersusPlayer = tuple[WordlePlayer, LocalWordleGame, str]
@@ -28,13 +28,14 @@ def render_games(
         [
             [
                 format_guess(
-                    word if game not in hidden_games else "?" * len(word), validity
+                    (word if game not in hidden_games else "?" * len(word), validity)
                 )
                 for (word, validity) in game.guess_history
             ]
             for game in games
         ],
         sep="│",
+        with_borders=False,
     )
 
 
@@ -84,7 +85,7 @@ while not (human_game.is_done and all(game.is_done for game in bot_games)):
 
     if not human_game.is_done:
         human_player.on_guess_feedback(
-            *human_game.make_guess(human_player.prompt_word("Your guess"))
+            *human_game.make_guess(human_player.prompt_word())
         )
 
     print(
