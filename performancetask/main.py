@@ -2,23 +2,36 @@ from __future__ import annotations
 import pygame
 from pygame import draw, display, time, key
 from random import randint
-from math import sin, cos, pi
+from math import sin, cos, pi, sqrt
 import json
 
 
-class Point:
+class Vec2:
     def __init__(self, x: float, y: float) -> None:
         self.x = x
         self.y = y
 
+    @classmethod
+    def from_angle(cls, angle: float, magnitude: float = 1):
+        return cls(x=cos(angle) * magnitude, y=sin(angle) * magnitude)
+
+    @property
+    def t(self) -> tuple[float, float]:
+        return (self.x, self.y)
+
+    @property
+    def sqrmagnitude(self) -> float:
+        return self.x**2 + self.y**2
+
+    @property
+    def magnitude(self) -> float:
+        return sqrt(self.x**2 + self.y**2)
+
     def draw(self, surface: pygame.Surface):
         draw.circle(surface, "green", (self.x, self.y), 2)
 
-    def cross(self, other: Point) -> float:
+    def cross(self, other: Vec2) -> float:
         return self.x * other.y - self.y * other.x
-
-    def as_tuple(self) -> tuple[float, float]:
-        return (self.x, self.y)
 
     def __repr__(self) -> str:
         return f"Point({self.x}, {self.y})"
@@ -26,28 +39,28 @@ class Point:
     def __str__(self) -> str:
         return f"( {self.x}, {self.y} )"
 
-    def __sub__(self, other: Point) -> Point:
-        return Point(self.x - other.x, self.y - other.y)
+    def __sub__(self, other: Vec2) -> Vec2:
+        return Vec2(self.x - other.x, self.y - other.y)
 
-    def __add__(self, other: Point) -> Point:
-        return Point(self.x + other.x, self.y + other.y)
+    def __add__(self, other: Vec2) -> Vec2:
+        return Vec2(self.x + other.x, self.y + other.y)
 
-    def __mul__(self, other: float) -> Point:
-        return Point(self.x * other, self.y * other)
+    def __mul__(self, other: float) -> Vec2:
+        return Vec2(self.x * other, self.y * other)
 
 
 class Line:
-    def __init__(self, start_pos: Point, end_pos: Point) -> None:
+    def __init__(self, start_pos: Vec2, end_pos: Vec2) -> None:
         self.start_pos = start_pos
         self.end_pos = end_pos
 
     @classmethod
-    def from_ray(cls, origin: Point, angle: float, distance: float = 2048):
+    def from_ray(cls, origin: Vec2, angle: float, distance: float = 2048):
         return cls(
-            start_pos=origin, end_pos=origin + Point(cos(angle), sin(angle)) * distance
+            start_pos=origin, end_pos=origin + Vec2(cos(angle), sin(angle)) * distance
         )
 
-    def find_intersection_with_line(self, other: Line) -> None | Point:
+    def find_intersection_with_line(self, other: Line) -> None | Vec2:
         p = self.start_pos
         r = self.end_pos - p  # p + r = self endpos
 
@@ -67,14 +80,14 @@ class Line:
         return p + (r * t)
 
     def find_intersection_with_ray(
-        self, origin: Point, angle: float, max_distance: float = 2048
-    ) -> None | Point:
+        self, origin: Vec2, angle: float, max_distance: float = 2048
+    ) -> None | Vec2:
         return self.find_intersection_with_line(
             self.from_ray(origin, angle, max_distance)
         )
 
     def draw(self, surface: pygame.Surface):
-        draw.line(surface, "red", self.start_pos.as_tuple(), self.end_pos.as_tuple())
+        draw.line(surface, "red", self.start_pos.t, self.end_pos.t)
 
 
 class World:
@@ -88,8 +101,8 @@ class World:
                 raise
 
             self.name = world_info.get("name", "Unknown")
-            self.points: list[Point] = [
-                Point(p["x"], p["y"]) for p in world_info.get("points", [])
+            self.points: list[Vec2] = [
+                Vec2(p["x"], p["y"]) for p in world_info.get("points", [])
             ]
             self.lines: list[Line] = []
 
@@ -97,40 +110,71 @@ class World:
                 print(point, other_point)
                 self.lines.append(Line(point, other_point))
 
+    def raycast(
+        self, origin: Vec2, angle: float, max_distance: float = 2048
+    ) -> tuple[Vec2, float] | None:
+        ray_line = Line.from_ray(origin, angle, max_distance)
+
+        record_point = None
+        record_dist = max_distance
+
+        for other_line in self.lines:
+            hit_point = ray_line.find_intersection_with_line(other_line)
+            if hit_point == None:
+                continue
+            dist = (hit_point - origin).magnitude
+            if dist > record_dist:
+                continue
+            record_dist = dist
+            record_point = hit_point
+
+        if record_point == None:
+            return None
+
+        return (record_point, record_dist)
+
     def draw(self, surface: pygame.Surface):
-        draw.lines(surface, "red", False, [p.as_tuple() for p in self.points])
+        draw.lines(surface, "red", False, [p.t for p in self.points])
 
 
 class Player:
     def __init__(self) -> None:
-        self.pos: Point = Point(0, 0)
+        self.pos: Vec2 = Vec2(0, 0)
+        self.velocity: Vec2 = Vec2(0, 0)
         self.angle: float = 0
+        self.dangle: float = 0
 
-    def move(self, speed: float, dt: float):
-        dir = Point(cos(self.angle), sin(self.angle))
-        self.pos += dir * speed * dt
+    def impulse(self, speed: Vec2):
+        self.velocity += speed
 
-    def turn(self, speed: float, dt: float):
-        self.angle += speed * dt
+    def angle_impulse(self, speed: float):
+        self.dangle += speed
+
+    def update(self, dt: float):
+        self.pos += self.velocity * dt
+        self.angle += self.dangle * dt
+        self.velocity *= 0.9
+        self.dangle *= 0.9
 
     def draw(self, surface: pygame.Surface):
-        forward = Point(cos(self.angle), sin(self.angle))
-        right = Point(cos(self.angle + pi / 2), sin(self.angle + pi / 2))
+        forward = Vec2(cos(self.angle), sin(self.angle))
+        right = Vec2(cos(self.angle + pi / 2), sin(self.angle + pi / 2))
 
         draw.polygon(
             surface,
             "yellow",
             [
-                (self.pos + forward * 8).as_tuple(),
-                (self.pos + right * 3).as_tuple(),
-                (self.pos - right * 3).as_tuple(),
+                (self.pos + forward * 8).t,
+                (self.pos + right * 3).t,
+                (self.pos - right * 3).t,
             ],
         )
+        draw.line(surface, "green", self.pos.t, (self.pos + self.velocity).t)
 
 
 current_world = World("world.json")
 current_player = Player()
-current_player.pos = Point(100, 100)
+current_player.pos = Vec2(100, 100)
 
 pygame.init()
 
@@ -141,18 +185,31 @@ def draw_screen():
     screen_surface.fill("black")
     current_world.draw(screen_surface)
     current_player.draw(screen_surface)
+
+    result = current_world.raycast(current_player.pos, current_player.angle, 2048)
+
+    if result:
+        draw.line(screen_surface, "pink", current_player.pos.t, result[0].t)
+        draw.circle(screen_surface, "pink", result[0].t, 4)
+
     display.flip()
 
 
-def process_input(dt: float):
+def process_input():
     pressed = key.get_pressed()
 
     if pressed[pygame.K_a]:
-        current_player.turn(-2, dt)
+        current_player.angle_impulse(-0.5)
     if pressed[pygame.K_d]:
-        current_player.turn(2, dt)
+        current_player.angle_impulse(0.5)
     if pressed[pygame.K_w]:
-        current_player.move(50, dt)
+        current_player.impulse(Vec2.from_angle(current_player.angle, 40))
+    if pressed[pygame.K_s]:
+        current_player.impulse(Vec2.from_angle(current_player.angle, -40))
+
+
+def update_world(dt: float):
+    current_player.update(dt)
 
 
 dt = 1
@@ -164,7 +221,8 @@ while running:
         if e.type == pygame.QUIT:
             running = False
 
-    process_input(dt)
+    process_input()
+    update_world(dt)
     draw_screen()
 
     dt = clock.tick(60) / 1000
