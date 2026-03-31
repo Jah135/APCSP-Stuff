@@ -34,8 +34,8 @@ def render_games(
             ]
             for game in games
         ],
-        sep="│",
-        with_borders=False,
+        with_borders=True,
+        sep_headers=True,
     )
 
 
@@ -81,7 +81,6 @@ while not (human_game.is_done and all(game.is_done for game in bot_games)):
                     else choice(DICTIONARY)
                 )
             )
-            print(f"{label} has guessed")
 
     if not human_game.is_done:
         human_player.on_guess_feedback(
