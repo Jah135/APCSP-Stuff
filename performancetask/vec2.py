@@ -17,7 +17,7 @@ class Vec2:
         return (self.x, self.y)
 
     @property
-    def sqrmagnitude(self) -> float:
+    def square_magnitude(self) -> float:
         return self.x**2 + self.y**2
 
     @property
@@ -27,6 +27,15 @@ class Vec2:
     @property
     def unit(self) -> Vec2:
         return self / self.magnitude
+
+    def distance_from(self, other: Vec2) -> float:
+        return (self - other).magnitude
+
+    def square_distance_from(self, other: Vec2) -> float:
+        return (self - other).square_magnitude
+
+    def direction_towards(self, other: Vec2) -> Vec2:
+        return (self - other).unit
 
     def draw(self, surface: pygame.Surface):
         pygame.draw.circle(surface, "green", (self.x, self.y), 2)

@@ -21,6 +21,18 @@ class Line:
         parallel = self.parallel_vector
         return Vec2(-parallel.y, parallel.x)
 
+    @property
+    def center(self) -> Vec2:
+        return (self.start_position + self.end_position) / 2
+
+    @property
+    def length(self) -> float:
+        return (self.start_position - self.end_position).magnitude
+
+    @property
+    def square_length(self) -> float:
+        return (self.start_position - self.end_position).square_magnitude
+
     def get_side(self, point: Vec2) -> float:
         to_point = (self.start_position - point).unit
         prod = self.perpendicular_vector.dot(to_point)
@@ -52,6 +64,18 @@ class Line:
         return self.find_intersection_with_line(
             self.from_ray(origin, angle, max_distance)
         )
+
+    def find_closest_point_on_line(self, point: Vec2):
+        l = self.square_length
+
+        if l == 0:
+            return self.start_position
+
+        u = point - self.start_position
+        v = self.end_position - self.start_position
+        t = min(max(u.dot(v) / l, 0), 1)
+
+        return self.start_position + v * t
 
     def draw(self, surface: pygame.Surface):
         pygame.draw.line(surface, "red", self.start_position.t, self.end_position.t)
