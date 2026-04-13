@@ -9,7 +9,13 @@
 			},
 			{
 				"x": 100,
-				"y": 150
+				"y": 150,
+				"tags": [
+					"noclip"
+				],
+				"attributes": {
+					"color": "purple"
+				}
 			},
 			{
 				"x": 300,

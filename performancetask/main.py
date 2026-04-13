@@ -1,11 +1,16 @@
 from __future__ import annotations
 import json
 import pygame
-from pygame import draw, display, time, key
-from math import sin, cos, pi, radians
+from pygame import draw, display, time, key, font
+from math import sin, cos, pi
 
 from vec2 import Vec2
 from line import Line
+
+
+pygame.init()
+
+default_font = font.Font(None, 30)
 
 
 class World:
@@ -19,27 +24,56 @@ class World:
                 raise
 
             self.name = world_info.get("name", "Unknown")
-            self.point_groups: list[list[Vec2]] = [
-                [Vec2(p["x"], p["y"]) for p in group]
-                for group in world_info.get("points", [])
-            ]
-            self.lines: list[Line] = []
 
-            for group in self.point_groups:
-                for point, other_point in zip(group, group[1:]):
-                    print(point, other_point)
-                    self.lines.append(Line(point, other_point))
+            groups: list[list[dict]] = world_info.get("points", [])
+
+            point_groups: list[list[Vec2]] = [
+                [Vec2(p["x"], p["y"]) for p in group] for group in groups
+            ]
+            tags_groups: list[list[set[str]]] = [
+                [set(p.get("tags", [])) for p in group] for group in groups
+            ]
+            attributes_groups: list[list[dict]] = [
+                [p.get("attributes", {}) for p in group] for group in groups
+            ]
+
+            self.point_groups = point_groups
+            self.tags_groups = tags_groups
+            self.attributes_groups = attributes_groups
+            self.all_lines: list[Line] = []
+
+            for points, tags, attributes in zip(
+                point_groups, tags_groups, attributes_groups
+            ):
+                for point, other_point, line_tags, line_attributes in zip(
+                    points, points[1:], tags, attributes
+                ):
+                    self.all_lines.append(
+                        Line(
+                            start_pos=point,
+                            end_pos=other_point,
+                            tags=line_tags,
+                            attributes=line_attributes,
+                        )
+                    )
 
     def raycast(
-        self, origin: Vec2, direction: Vec2, max_distance: float = 2048
+        self,
+        origin: Vec2,
+        direction: Vec2,
+        max_distance: float = 2048,
+        ignore_tags: set[str] = {"ignore"},
     ) -> tuple[Vec2, float, Line] | None:
-        ray_line = Line(origin, origin + direction)
+        ray_line = Line(origin, origin + direction, {"ray"})
 
         record_point = None
         record_line = None
         record_dist = max_distance
 
-        for other_line in self.lines:
+        for other_line in self.all_lines:
+            if bool(ignore_tags & other_line.tags):
+                continue
+
             hit_point = ray_line.find_intersection_with_line(other_line)
             if hit_point == None:
                 continue
@@ -58,8 +92,17 @@ class World:
         return (record_point, record_dist, record_line)
 
     def draw(self, surface: pygame.Surface):
-        for group in self.point_groups:
-            draw.lines(surface, "red", False, [p.t for p in group])
+        for line in self.all_lines:
+            col = line.attributes.get("color", "red")
+            draw.line(
+                surface,
+                col,
+                line.start_position.t,
+                line.end_position.t,
+            )
+            surface.blit(
+                default_font.render(str(line.slope), True, "white"), line.center.t
+            )
 
 
 class Player:
@@ -77,7 +120,9 @@ class Player:
         self.dangle += speed
 
     def update(self, dt: float):
-        collision_result = world.raycast(self.position, self.velocity * dt)
+        collision_result = world.raycast(
+            self.position, self.velocity * dt, ignore_tags={"noclip"}
+        )
 
         if collision_result:
             pos, _, line = collision_result
@@ -114,7 +159,6 @@ world = World("world.json")
 player = Player()
 player.position = Vec2(100, 100)
 
-pygame.init()
 
 screen = pygame.display.set_mode((900, 900))
 fov = 90
@@ -126,25 +170,23 @@ def draw_screen():
     player.draw(screen)
 
     if player.colliding_with:
+        print(player.colliding_with.attributes)
         draw.line(
             screen,
             "blue",
             player.colliding_with.start_position.t,
             player.colliding_with.end_position.t,
         )
-    for offset in range(-fov // 2, fov // 2):
-        result = world.raycast(
-            player.position, Vec2.from_angle(player.angle + radians(offset)) * 800
-        )
-        if result:
-            _, dist, _ = result
-            height = 800 - dist
-            draw.rect(
-                screen,
-                (0, 0, int((1 - dist / 800) * 255)),
-                pygame.Rect(200 + offset * 8, 100 + height / 2, 8, height),
-            )
-
+    # for offset in range(-fov // 2, fov // 2):
+    #     result = world.raycast(
+    #         player.position,
+    #         Vec2.from_angle(player.angle + radians(offset)) * 800,
+    #         ignore_tags={"noclip"},
+    #     )
+    #     if result:
+    #         p, dist, _ = result
+    #         draw.circle(screen, "pink", p.t, 2)
+    #         draw.line(screen, "pink", player.position.t, p.t)
     display.flip()
 
 
@@ -152,13 +194,13 @@ def process_input():
     pressed = key.get_pressed()
 
     if pressed[pygame.K_a]:
-        player.angle_impulse(-0.5)
+        player.angle_impulse(-0.3)
     if pressed[pygame.K_d]:
-        player.angle_impulse(0.5)
+        player.angle_impulse(0.3)
     if pressed[pygame.K_w]:
-        player.impulse(Vec2.from_angle(player.angle, 40))
+        player.impulse(Vec2.from_angle(player.angle, 30))
     if pressed[pygame.K_s]:
-        player.impulse(Vec2.from_angle(player.angle, -40))
+        player.impulse(Vec2.from_angle(player.angle, -30))
 
 
 def update_world(dt: float):

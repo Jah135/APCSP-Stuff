@@ -4,13 +4,40 @@ import pygame
 
 
 class Line:
-    def __init__(self, start_pos: Vec2, end_pos: Vec2) -> None:
+    def __init__(
+        self,
+        start_pos: Vec2,
+        end_pos: Vec2,
+        tags: set[str] = set(),
+        attributes: dict = {},
+    ) -> None:
         self.start_position = start_pos
         self.end_position = end_pos
+        self.tags = tags
+        self.attributes = attributes
+
+        d = self.end_position - self.start_position
+
+        if d.x == 0:
+            self.slope = 1e9
+        else:
+            self.slope = d.y / d.x
 
     @classmethod
-    def from_ray(cls, origin: Vec2, angle: float, distance: float = 2048):
-        return cls(start_pos=origin, end_pos=origin + Vec2.from_angle(angle) * distance)
+    def from_ray(
+        cls,
+        origin: Vec2,
+        angle: float,
+        distance: float = 2048,
+        tags: set[str] = set(),
+        attributes: dict = {},
+    ):
+        return cls(
+            start_pos=origin,
+            end_pos=origin + Vec2.from_angle(angle) * distance,
+            tags=tags,
+            attributes=attributes,
+        )
 
     @property
     def parallel_vector(self) -> Vec2:
@@ -20,6 +47,15 @@ class Line:
     def perpendicular_vector(self) -> Vec2:
         parallel = self.parallel_vector
         return Vec2(-parallel.y, parallel.x)
+
+    @property
+    def center(self) -> Vec2:
+        return (self.end_position + self.start_position) / 2
+
+    def get_normal_for_point(self, point: Vec2) -> Vec2: ...
+
+    def get_is_above_sign(self, point: Vec2) -> int:
+        """Returns an integer representing whether the point is above the line (1), on the line (0) or below the line (-1)"""
 
     def get_side(self, point: Vec2) -> float:
         to_point = (self.start_position - point).unit
