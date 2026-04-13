@@ -1,8 +1,8 @@
 from __future__ import annotations
 import json
 import pygame
-from pygame import draw, display, time, key, font
-from math import sin, cos, pi
+from pygame import Font, draw, display, time, key
+from math import pi, radians
 
 from vec2 import Vec2
 from line import Line
@@ -113,6 +113,14 @@ class Player:
         self.dangle: float = 0
         self.colliding_with: Line | None = None
 
+    @property
+    def look_vector(self) -> Vec2:
+        return Vec2.from_angle(self.angle)
+
+    @property
+    def right_vector(self) -> Vec2:
+        return Vec2.from_angle(self.angle + pi / 2)
+
     def impulse(self, speed: Vec2):
         self.velocity += speed
 
@@ -139,8 +147,8 @@ class Player:
         self.dangle *= 0.9
 
     def draw(self, surface: pygame.Surface):
-        forward = Vec2(cos(self.angle), sin(self.angle))
-        right = Vec2(cos(self.angle + pi / 2), sin(self.angle + pi / 2))
+        forward = self.look_vector
+        right = self.right_vector
 
         draw.lines(
             surface,
@@ -163,6 +171,8 @@ player.position = Vec2(100, 100)
 screen = pygame.display.set_mode((900, 900))
 fov = 90
 
+debug_font = Font(size=20)
+
 
 def draw_screen():
     screen.fill("black")
@@ -177,16 +187,31 @@ def draw_screen():
             player.colliding_with.start_position.t,
             player.colliding_with.end_position.t,
         )
-    # for offset in range(-fov // 2, fov // 2):
-    #     result = world.raycast(
-    #         player.position,
-    #         Vec2.from_angle(player.angle + radians(offset)) * 800,
-    #         ignore_tags={"noclip"},
-    #     )
-    #     if result:
-    #         p, dist, _ = result
-    #         draw.circle(screen, "pink", p.t, 2)
-    #         draw.line(screen, "pink", player.position.t, p.t)
+
+    ordered_lines = world.lines[:]
+    ordered_lines.sort(
+        key=lambda line: player.position.distance_from(
+            line.find_closest_point_on_line(player.position)
+        ),
+        reverse=True,
+    )
+
+    for index, line in enumerate(ordered_lines):
+        start_dot = -player.position.direction_towards(line.start_position).dot(
+            player.look_vector
+        )
+
+        if start_dot < 0:
+            continue
+
+        start_screen_pos = Vec2(450, 450) - (Vec2(450, 0) * (1 - start_dot))
+
+        draw.circle(screen, "green", start_screen_pos.t, 4)
+        screen.blit(
+            debug_font.render(str(1 - start_dot), True, "white"), line.start_position.t
+        )
+        screen.blit(debug_font.render(str(index), True, "white"), start_screen_pos.t)
+
     display.flip()
 
 
