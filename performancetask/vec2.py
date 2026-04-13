@@ -37,9 +37,6 @@ class Vec2:
     def direction_towards(self, other: Vec2) -> Vec2:
         return (self - other).unit
 
-    def draw(self, surface: pygame.Surface):
-        pygame.draw.circle(surface, "green", (self.x, self.y), 2)
-
     def cross(self, other: Vec2) -> float:
         return self.x * other.y - self.y * other.x
 
@@ -48,6 +45,9 @@ class Vec2:
 
     def angle(self, other: Vec2) -> float:
         return acos(self.dot(other))
+
+    def draw(self, surface: pygame.Surface):
+        pygame.draw.circle(surface, "green", (self.x, self.y), 2)
 
     def __repr__(self) -> str:
         return f"Point({self.x}, {self.y})"

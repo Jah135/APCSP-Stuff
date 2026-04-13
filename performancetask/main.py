@@ -135,7 +135,8 @@ class Player:
             pos, _, line = collision_result
             normal = line.perpendicular_vector * line.get_is_above_sign(self.position)
             # self.position = pos - normal
-            self.velocity -= self.velocity * normal.dot(self.velocity.unit)
+            self.velocity -= normal * normal.dot(self.velocity)
+            self.position += self.velocity * dt
             self.colliding_with = line
         else:
             self.position += self.velocity * dt
