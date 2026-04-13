@@ -1,8 +1,8 @@
 from __future__ import annotations
 import json
 import pygame
-from pygame import Font, draw, display, time, key
-from math import pi, radians
+from pygame import font, draw, display, time, key
+from math import pi, degrees
 
 from vec2 import Vec2
 from line import Line
@@ -10,7 +10,7 @@ from line import Line
 
 pygame.init()
 
-default_font = font.Font(None, 30)
+debug_font = font.Font(None, size=20)
 
 
 class World:
@@ -100,9 +100,6 @@ class World:
                 line.start_position.t,
                 line.end_position.t,
             )
-            surface.blit(
-                default_font.render(str(line.slope), True, "white"), line.center.t
-            )
 
 
 class Player:
@@ -129,13 +126,16 @@ class Player:
 
     def update(self, dt: float):
         collision_result = world.raycast(
-            self.position, self.velocity * dt, ignore_tags={"noclip"}
+            self.position,
+            self.velocity * dt,
+            ignore_tags={"noclip"},
         )
 
         if collision_result:
             pos, _, line = collision_result
-            normal = line.perpendicular_vector * line.get_side(self.position)
-            self.position = pos - normal
+            normal = line.perpendicular_vector * line.get_is_above_sign(self.position)
+            # self.position = pos - normal
+            self.velocity -= self.velocity * normal.dot(self.velocity.unit)
             self.colliding_with = line
         else:
             self.position += self.velocity * dt
@@ -171,46 +171,44 @@ player.position = Vec2(100, 100)
 screen = pygame.display.set_mode((900, 900))
 fov = 90
 
-debug_font = Font(size=20)
-
 
 def draw_screen():
     screen.fill("black")
     world.draw(screen)
     player.draw(screen)
 
-    if player.colliding_with:
-        print(player.colliding_with.attributes)
-        draw.line(
-            screen,
-            "blue",
-            player.colliding_with.start_position.t,
-            player.colliding_with.end_position.t,
-        )
+    line = world.all_lines[2]
+    p = line.start_position
 
-    ordered_lines = world.lines[:]
-    ordered_lines.sort(
-        key=lambda line: player.position.distance_from(
-            line.find_closest_point_on_line(player.position)
-        ),
-        reverse=True,
-    )
+    ang = (p - player.position).unit.angle(player.look_vector)
 
-    for index, line in enumerate(ordered_lines):
-        start_dot = -player.position.direction_towards(line.start_position).dot(
-            player.look_vector
-        )
+    screen.blit(debug_font.render(str(degrees(ang)), True, "white"), p.t)
 
-        if start_dot < 0:
-            continue
+    draw.circle(screen, "yellow", p.t, 3)
 
-        start_screen_pos = Vec2(450, 450) - (Vec2(450, 0) * (1 - start_dot))
+    # ordered_lines = world.all_lines[:]
+    # ordered_lines.sort(
+    #     key=lambda line: player.position.distance_from(
+    #         line.find_closest_point_on_line(player.position)
+    #     ),
+    #     reverse=True,
+    # )
 
-        draw.circle(screen, "green", start_screen_pos.t, 4)
-        screen.blit(
-            debug_font.render(str(1 - start_dot), True, "white"), line.start_position.t
-        )
-        screen.blit(debug_font.render(str(index), True, "white"), start_screen_pos.t)
+    # for index, line in enumerate(ordered_lines):
+    #     start_dot = -player.position.direction_towards(line.start_position).dot(
+    #         player.look_vector
+    #     )
+
+    #     if start_dot < 0:
+    #         continue
+
+    #     start_screen_pos = Vec2(450, 450) - (Vec2(450, 0) * (1 - start_dot))
+
+    #     draw.circle(screen, "green", start_screen_pos.t, 4)
+    #     screen.blit(
+    #         debug_font.render(str(1 - start_dot), True, "white"), line.start_position.t
+    #     )
+    #     screen.blit(debug_font.render(str(index), True, "white"), start_screen_pos.t)
 
     display.flip()
 

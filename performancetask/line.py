@@ -48,11 +48,6 @@ class Line:
         parallel = self.parallel_vector
         return Vec2(-parallel.y, parallel.x)
 
-    def get_normal_for_point(self, point: Vec2) -> Vec2: ...
-
-    def get_is_above_sign(self, point: Vec2) -> int:
-        """Returns an integer representing whether the point is above the line (1), on the line (0) or below the line (-1)"""
-
     @property
     def center(self) -> Vec2:
         return (self.start_position + self.end_position) / 2
@@ -65,11 +60,13 @@ class Line:
     def square_length(self) -> float:
         return (self.start_position - self.end_position).square_magnitude
 
-    def get_side(self, point: Vec2) -> float:
-        to_point = (self.start_position - point).unit
-        prod = self.perpendicular_vector.dot(to_point)
+    def get_normal_for_point(self, point: Vec2) -> Vec2: ...
 
-        return -1 if prod < 0 else 0 if prod == 0 else 1
+    def get_is_above_sign(self, point: Vec2) -> float:
+        """Returns an integer representing whether the point is above the line (1), on the line (0) or below the line (-1)"""
+        y_at_x = self.start_position.y + (point.x - self.start_position.x) * self.slope
+
+        return -1 if y_at_x < point.y else 0 if y_at_x == point.y else 1
 
     def find_intersection_with_line(self, other: Line) -> Vec2 | None:
         p = self.start_position

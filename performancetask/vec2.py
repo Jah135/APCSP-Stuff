@@ -1,5 +1,5 @@
 from __future__ import annotations
-from math import sqrt, cos, sin
+from math import sqrt, cos, sin, acos
 import pygame
 
 
@@ -45,6 +45,9 @@ class Vec2:
 
     def dot(self, other: Vec2) -> float:
         return self.x * other.x + self.y * other.y
+
+    def angle(self, other: Vec2) -> float:
+        return acos(self.dot(other))
 
     def __repr__(self) -> str:
         return f"Point({self.x}, {self.y})"
