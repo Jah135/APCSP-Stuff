@@ -41,26 +41,33 @@ class Line:
 
     @property
     def parallel_vector(self) -> Vec2:
+        """A `Vec2` describing a direction that is parrellel to this line."""
         return (self.end_position - self.start_position).unit
 
     @property
     def perpendicular_vector(self) -> Vec2:
+        """A `Vec2` describing a direction that is perpendicular, or tangent, to this line."""
         parallel = self.parallel_vector
         return Vec2(-parallel.y, parallel.x)
 
     @property
-    def center(self) -> Vec2:
+    def midpoint(self) -> Vec2:
+        """The midpoint/center of this line."""
         return (self.start_position + self.end_position) / 2
 
     @property
     def length(self) -> float:
-        return (self.start_position - self.end_position).magnitude
+        """The distance between the start and end position of this line."""
+        return self.start_position.distance_from(self.end_position)
 
     @property
     def square_length(self) -> float:
-        return (self.start_position - self.end_position).square_magnitude
+        """The square length of this line."""
+        return self.start_position.square_distance_from(self.end_position)
 
-    def get_normal_for_point(self, point: Vec2) -> Vec2: ...
+    def get_normal_for_point(self, point: Vec2) -> Vec2:
+        """Returns a `Vec2` describing the normal of the surface the specified point is closest to."""
+        return self.perpendicular_vector * self.get_is_above_sign(point)
 
     def get_is_above_sign(self, point: Vec2) -> float:
         """Returns an integer representing whether the point is above the line (1), on the line (0) or below the line (-1)"""
@@ -69,6 +76,7 @@ class Line:
         return -1 if y_at_x < point.y else 0 if y_at_x == point.y else 1
 
     def find_intersection_with_line(self, other: Line) -> Vec2 | None:
+        """Returns a `Vec2` if this line segment and the specified line segment intersect, otherwise returns `None`."""
         p = self.start_position
         r = self.end_position - p  # p + r = self endpos
 
@@ -90,21 +98,23 @@ class Line:
     def find_intersection_with_ray(
         self, origin: Vec2, angle: float, max_distance: float = 2048
     ) -> Vec2 | None:
+        """Returns a `Vec2` if this line segment and the specified ray intersect, otherwise returns `None`."""
         return self.find_intersection_with_line(
             self.from_ray(origin, angle, max_distance)
         )
 
     def find_closest_point_on_line(self, point: Vec2):
+        """Returns the closest point on this line segment to the specified point."""
         l = self.square_length
 
         if l == 0:
             return self.start_position
 
-        u = point - self.start_position
-        v = self.end_position - self.start_position
-        t = min(max(u.dot(v) / l, 0), 1)
+        pd = point - self.start_position
+        sd = self.end_position - self.start_position
+        t = min(max(pd.dot(sd) / l, 0), 1)
 
-        return self.start_position + v * t
+        return self.start_position + sd * t
 
     def draw(self, surface: pygame.Surface):
         pygame.draw.line(surface, "red", self.start_position.t, self.end_position.t)

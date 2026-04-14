@@ -14,37 +14,47 @@ class Vec2:
 
     @property
     def t(self) -> tuple[float, float]:
+        """A tuple representation of this vector."""
         return (self.x, self.y)
 
     @property
     def square_magnitude(self) -> float:
+        """The square magnitude of this vector."""
         return self.x**2 + self.y**2
 
     @property
     def magnitude(self) -> float:
+        """The magnitude of this vector."""
         return sqrt(self.x**2 + self.y**2)
 
     @property
     def unit(self) -> Vec2:
+        """A `Vec2` with the same direction as this `Vec2`, with a magnitude of 1."""
         return self / self.magnitude
 
-    def distance_from(self, other: Vec2) -> float:
-        return (self - other).magnitude
+    def distance_from(self, point: Vec2) -> float:
+        """Returns the distance from this `Vec2` to the specified point."""
+        return (self - point).magnitude
 
-    def square_distance_from(self, other: Vec2) -> float:
-        return (self - other).square_magnitude
+    def square_distance_from(self, point: Vec2) -> float:
+        """Returns the square distance from this `Vec2` to the specified point."""
+        return (self - point).square_magnitude
 
-    def direction_towards(self, other: Vec2) -> Vec2:
-        return (self - other).unit
+    def direction_towards(self, point: Vec2) -> Vec2:
+        """Returns a unit `Vec2` pointing from this `Vec2` to the specified point."""
+        return (self - point).unit
 
-    def cross(self, other: Vec2) -> float:
-        return self.x * other.y - self.y * other.x
+    def cross(self, vector: Vec2) -> float:
+        """Returns the cross product of this `Vec2` and the specified `Vec2`."""
+        return self.x * vector.y - self.y * vector.x
 
-    def dot(self, other: Vec2) -> float:
-        return self.x * other.x + self.y * other.y
+    def dot(self, vector: Vec2) -> float:
+        """Returns the dot product of this `Vec2` and the specified `Vec2`."""
+        return self.x * vector.x + self.y * vector.y
 
-    def angle(self, other: Vec2) -> float:
-        return acos(self.dot(other))
+    def angle(self, vector: Vec2) -> float:
+        """Returns the arccos of the dot product of this `Vec2` and the specified `Vec2`."""
+        return acos(self.dot(vector))
 
     def draw(self, surface: pygame.Surface):
         pygame.draw.circle(surface, "green", (self.x, self.y), 2)

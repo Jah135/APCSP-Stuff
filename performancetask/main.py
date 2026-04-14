@@ -10,7 +10,7 @@ from line import Line
 
 pygame.init()
 
-debug_font = font.Font(None, size=20)
+DEBUG_FONT = font.Font(None, size=20)
 
 
 class World:
@@ -37,10 +37,12 @@ class World:
                 [p.get("attributes", {}) for p in group] for group in groups
             ]
 
+            all_lines: list[Line] = []
+
             self.point_groups = point_groups
             self.tags_groups = tags_groups
             self.attributes_groups = attributes_groups
-            self.all_lines: list[Line] = []
+            self.all_lines = all_lines
 
             for points, tags, attributes in zip(
                 point_groups, tags_groups, attributes_groups
@@ -48,7 +50,7 @@ class World:
                 for point, other_point, line_tags, line_attributes in zip(
                     points, points[1:], tags, attributes
                 ):
-                    self.all_lines.append(
+                    all_lines.append(
                         Line(
                             start_pos=point,
                             end_pos=other_point,
@@ -125,7 +127,7 @@ class Player:
         self.dangle += speed
 
     def update(self, dt: float):
-        collision_result = world.raycast(
+        collision_result = WORLD.raycast(
             self.position,
             self.velocity * dt,
             ignore_tags={"noclip"},
@@ -133,7 +135,7 @@ class Player:
 
         if collision_result:
             pos, _, line = collision_result
-            normal = line.perpendicular_vector * line.get_is_above_sign(self.position)
+            normal = line.get_normal_for_point(self.position)
             # self.position = pos - normal
             self.velocity -= normal * normal.dot(self.velocity)
             self.position += self.velocity * dt
@@ -141,7 +143,6 @@ class Player:
         else:
             self.position += self.velocity * dt
             self.colliding_with = None
-            # self.velocity = Vec2(0, 0)
 
         self.angle += self.dangle * dt
         self.velocity *= 0.9
@@ -161,31 +162,32 @@ class Player:
                 (self.position - right * 3).t,
             ],
         )
+        # draw.arc(surface, "purple", pygame.Rect(self.position.t, 4, 4))
         draw.line(surface, "green", self.position.t, (self.position + self.velocity).t)
 
 
-world = World("world.json")
-player = Player()
-player.position = Vec2(100, 100)
+WORLD = World("world.json")
+PLAYER = Player()
+PLAYER.position = Vec2(100, 100)
 
 
-screen = pygame.display.set_mode((900, 900))
+SCREEN = pygame.display.set_mode((900, 900))
 fov = 90
 
 
 def draw_screen():
-    screen.fill("black")
-    world.draw(screen)
-    player.draw(screen)
+    SCREEN.fill("black")
+    WORLD.draw(SCREEN)
+    PLAYER.draw(SCREEN)
 
-    line = world.all_lines[2]
+    line = WORLD.all_lines[2]
     p = line.start_position
 
-    ang = (p - player.position).unit.angle(player.look_vector)
+    ang = (p - PLAYER.position).unit.angle(PLAYER.look_vector)
 
-    screen.blit(debug_font.render(str(degrees(ang)), True, "white"), p.t)
+    SCREEN.blit(DEBUG_FONT.render(str(degrees(ang)), True, "white"), p.t)
 
-    draw.circle(screen, "yellow", p.t, 3)
+    draw.circle(SCREEN, "yellow", p.t, 3)
 
     # ordered_lines = world.all_lines[:]
     # ordered_lines.sort(
@@ -218,17 +220,17 @@ def process_input():
     pressed = key.get_pressed()
 
     if pressed[pygame.K_a]:
-        player.angle_impulse(-0.3)
+        PLAYER.angle_impulse(-0.3)
     if pressed[pygame.K_d]:
-        player.angle_impulse(0.3)
+        PLAYER.angle_impulse(0.3)
     if pressed[pygame.K_w]:
-        player.impulse(Vec2.from_angle(player.angle, 30))
+        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, 30))
     if pressed[pygame.K_s]:
-        player.impulse(Vec2.from_angle(player.angle, -30))
+        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, -30))
 
 
 def update_world(dt: float):
-    player.update(dt)
+    PLAYER.update(dt)
 
 
 dt = 1
