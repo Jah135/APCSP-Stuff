@@ -127,26 +127,35 @@ class Player:
         self.dangle += speed
 
     def update(self, dt: float):
-        collision_result = WORLD.raycast(
+        premove_collision_result = WORLD.raycast(
             self.position,
             self.velocity * dt,
             ignore_tags={"noclip"},
         )
 
-        if collision_result:
-            pos, _, line = collision_result
+        if premove_collision_result:
+            _, _, line = premove_collision_result
             normal = line.get_normal_for_point(self.position)
-            # self.position = pos - normal
             self.velocity -= normal * normal.dot(self.velocity)
-            self.position += self.velocity * dt
             self.colliding_with = line
+
+            postmove_collision_result = WORLD.raycast(
+                self.position, self.velocity * dt, ignore_tags={"noclip"}
+            )
+
+            if postmove_collision_result:
+                pos, _, _ = postmove_collision_result
+                self.position = pos - normal
+            else:
+                self.position += self.velocity * dt
         else:
-            self.position += self.velocity * dt
             self.colliding_with = None
+            self.position += self.velocity * dt
 
         self.angle += self.dangle * dt
-        self.velocity *= 0.9
-        self.dangle *= 0.9
+
+        self.velocity *= 0.6
+        self.dangle *= 0.6
 
     def draw(self, surface: pygame.Surface):
         forward = self.look_vector
@@ -162,8 +171,15 @@ class Player:
                 (self.position - right * 3).t,
             ],
         )
-        # draw.arc(surface, "purple", pygame.Rect(self.position.t, 4, 4))
+        draw.arc(
+            surface,
+            "purple",
+            pygame.Rect(self.position.x, self.position.y, 10, 10),
+            self.angle,
+            self.angle + self.dangle,
+        )
         draw.line(surface, "green", self.position.t, (self.position + self.velocity).t)
+        draw.circle(surface, "purple", (self.position + self.velocity * dt).t, 3)
 
 
 WORLD = World("world.json")
@@ -220,13 +236,13 @@ def process_input():
     pressed = key.get_pressed()
 
     if pressed[pygame.K_a]:
-        PLAYER.angle_impulse(-0.3)
+        PLAYER.angle_impulse(-1.5)
     if pressed[pygame.K_d]:
-        PLAYER.angle_impulse(0.3)
+        PLAYER.angle_impulse(1.5)
     if pressed[pygame.K_w]:
-        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, 30))
+        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, 100))
     if pressed[pygame.K_s]:
-        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, -30))
+        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, -100))
 
 
 def update_world(dt: float):

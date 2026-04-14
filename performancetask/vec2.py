@@ -1,5 +1,5 @@
 from __future__ import annotations
-from math import sqrt, cos, sin, acos
+from math import sqrt, cos, sin, acos, pi
 import pygame
 
 
@@ -32,6 +32,13 @@ class Vec2:
         """A `Vec2` with the same direction as this `Vec2`, with a magnitude of 1."""
         return self / self.magnitude
 
+    def rotated(self, angle: float) -> Vec2:
+        """Returns a version of this `Vec2` rotated around the origin by the specified amount."""
+        return Vec2(
+            self.x * cos(angle) + self.y * cos(angle + pi / 2),
+            self.x * sin(angle) + self.y * sin(angle + pi / 2),
+        )
+
     def distance_from(self, point: Vec2) -> float:
         """Returns the distance from this `Vec2` to the specified point."""
         return (self - point).magnitude
@@ -56,7 +63,7 @@ class Vec2:
         """Returns the arccos of the dot product of this `Vec2` and the specified `Vec2`."""
         return acos(self.dot(vector))
 
-    def draw(self, surface: pygame.Surface):
+    def debug_draw(self, surface: pygame.Surface):
         pygame.draw.circle(surface, "green", (self.x, self.y), 2)
 
     def __repr__(self) -> str:
