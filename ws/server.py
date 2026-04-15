@@ -1,9 +1,9 @@
 import asyncio
-from websockets import serve
+from websockets import serve, ServerConnection
 
 
-async def on_connection(ws):
-    print(ws)
+async def on_connection(ws: ServerConnection):
+    
 
 
 async def main():
