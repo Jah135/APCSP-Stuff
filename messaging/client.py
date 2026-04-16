@@ -34,8 +34,9 @@ async def input_loop(connection: ClientConnection):
 
 async def main():
     username = input("Username: ")
+    uri = input("Room URI: ")
 
-    async with connect("ws://localhost:6767") as connection:
+    async with connect(uri) as connection:
         await connection.send(username)
         asyncio.create_task(input_loop(connection))
         await client_event_handler(connection)

@@ -55,7 +55,11 @@ async def on_client_connect(client_ws: ServerConnection):
 
 
 async def main():
-    async with serve(on_client_connect, host="localhost", port=6767) as server:
+    host = input("host: ")
+    port = int(input("port: "))
+
+    async with serve(on_client_connect, host=host, port=port) as server:
+        print(f"hosting room @ ws://{host}:{port}")
         await server.serve_forever()
 
 
