@@ -29,7 +29,7 @@ async def on_client_connect(client_ws: ServerConnection):
     connected_clients.append(client)
 
     broadcast_json(
-        [other.connection for other in connected_clients if other != client],
+        [other.connection for other in connected_clients],
         {"type": "member_online", "data": {"name": username}},
     )
 
@@ -38,7 +38,7 @@ async def on_client_connect(client_ws: ServerConnection):
             message = str(await client_ws.recv())
 
             broadcast_json(
-                [other.connection for other in connected_clients if other != client],
+                [other.connection for other in connected_clients],
                 {
                     "type": "message",
                     "data": {"content": message, "sender": client.username},
@@ -48,7 +48,7 @@ async def on_client_connect(client_ws: ServerConnection):
         pass
     finally:
         broadcast_json(
-            [other.connection for other in connected_clients if other != client],
+            [other.connection for other in connected_clients],
             {"type": "member_offline", "data": {"name": username}},
         )
         connected_clients.remove(client)
