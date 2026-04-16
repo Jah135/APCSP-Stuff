@@ -1,5 +1,6 @@
 from __future__ import annotations
 from vec2 import Vec2
+from math import atan
 import pygame
 
 
@@ -13,15 +14,9 @@ class Line:
     ) -> None:
         self.start_position = start_pos
         self.end_position = end_pos
+
         self.tags = tags
         self.attributes = attributes
-
-        d = self.end_position - self.start_position
-
-        if d.x == 0:
-            self.slope = 1e9
-        else:
-            self.slope = d.y / d.x
 
     @classmethod
     def from_ray(
@@ -65,7 +60,17 @@ class Line:
         """The square length of this line."""
         return self.start_position.square_distance_from(self.end_position)
 
-    def get_normal_for_point(self, point: Vec2) -> Vec2:
+    @property
+    def slope(self) -> float:
+        d = self.end_position - self.start_position
+
+        return 1e9 if d.x == 0 else d.y / d.x
+
+    @property
+    def angle(self) -> float:
+        return atan(self.slope)
+
+    def get_normal_towards_point(self, point: Vec2) -> Vec2:
         """Returns a `Vec2` describing the normal of the surface the specified point is closest to."""
         return self.perpendicular_vector * self.get_is_above_sign(point)
 

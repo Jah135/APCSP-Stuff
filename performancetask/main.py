@@ -11,6 +11,7 @@ from line import Line
 pygame.init()
 
 DEBUG_FONT = font.Font(None, size=20)
+SUB_PHYSICS_STEPS = 4
 
 
 class World:
@@ -105,11 +106,18 @@ class World:
 
 
 class Player:
+    friction = 0.01
+    rot_friction = 0.2
+
+    wall_friction_scalar = 10
+
     def __init__(self) -> None:
         self.position: Vec2 = Vec2(0, 0)
         self.velocity: Vec2 = Vec2(0, 0)
+
         self.angle: float = 0
-        self.dangle: float = 0
+        self.angle_velocity: float = 0
+
         self.colliding_with: Line | None = None
 
     @property
@@ -124,7 +132,7 @@ class Player:
         self.velocity += speed
 
     def angle_impulse(self, speed: float):
-        self.dangle += speed
+        self.angle_velocity += speed
 
     def update(self, dt: float):
         premove_collision_result = WORLD.raycast(
@@ -134,28 +142,21 @@ class Player:
         )
 
         if premove_collision_result:
-            _, _, line = premove_collision_result
-            normal = line.get_normal_for_point(self.position)
+            pos, _, line = premove_collision_result
+            normal = line.get_normal_towards_point(self.position)
             self.velocity -= normal * normal.dot(self.velocity)
+            # self.position = pos - normal
             self.colliding_with = line
-
-            postmove_collision_result = WORLD.raycast(
-                self.position, self.velocity * dt, ignore_tags={"noclip"}
-            )
-
-            if postmove_collision_result:
-                pos, _, _ = postmove_collision_result
-                self.position = pos - normal
-            else:
-                self.position += self.velocity * dt
         else:
             self.colliding_with = None
-            self.position += self.velocity * dt
 
-        self.angle += self.dangle * dt
+        self.position += self.velocity * dt
+        self.angle += self.angle_velocity * dt
 
-        self.velocity *= 0.6
-        self.dangle *= 0.6
+        self.velocity *= (
+            1 - self.friction * self.wall_friction_scalar if self.colliding_with else 1
+        )
+        self.angle_velocity *= 1 - self.rot_friction
 
     def draw(self, surface: pygame.Surface):
         forward = self.look_vector
@@ -171,15 +172,9 @@ class Player:
                 (self.position - right * 3).t,
             ],
         )
-        draw.arc(
-            surface,
-            "purple",
-            pygame.Rect(self.position.x, self.position.y, 10, 10),
-            self.angle,
-            self.angle + self.dangle,
+        draw.line(
+            surface, "lightblue", self.position.t, (self.position + self.velocity).t
         )
-        draw.line(surface, "green", self.position.t, (self.position + self.velocity).t)
-        draw.circle(surface, "purple", (self.position + self.velocity * dt).t, 3)
 
 
 WORLD = World("world.json")
@@ -187,23 +182,13 @@ PLAYER = Player()
 PLAYER.position = Vec2(100, 100)
 
 
-SCREEN = pygame.display.set_mode((900, 900))
-fov = 90
+SCREEN = pygame.display.set_mode((1920, 1000))
 
 
 def draw_screen():
     SCREEN.fill("black")
     WORLD.draw(SCREEN)
     PLAYER.draw(SCREEN)
-
-    line = WORLD.all_lines[2]
-    p = line.start_position
-
-    ang = (p - PLAYER.position).unit.angle(PLAYER.look_vector)
-
-    SCREEN.blit(DEBUG_FONT.render(str(degrees(ang)), True, "white"), p.t)
-
-    draw.circle(SCREEN, "yellow", p.t, 3)
 
     # ordered_lines = world.all_lines[:]
     # ordered_lines.sort(
@@ -236,16 +221,17 @@ def process_input():
     pressed = key.get_pressed()
 
     if pressed[pygame.K_a]:
-        PLAYER.angle_impulse(-1.5)
+        PLAYER.angle_impulse(-0.8)
     if pressed[pygame.K_d]:
-        PLAYER.angle_impulse(1.5)
+        PLAYER.angle_impulse(0.8)
     if pressed[pygame.K_w]:
-        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, 100))
+        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, 20))
     if pressed[pygame.K_s]:
-        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, -100))
+        PLAYER.impulse(Vec2.from_angle(PLAYER.angle, -20))
 
 
 def update_world(dt: float):
+    PLAYER.impulse(Vec2(0, 10))
     PLAYER.update(dt)
 
 
