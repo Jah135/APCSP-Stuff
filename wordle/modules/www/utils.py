@@ -12,5 +12,5 @@ async def send_json(connection: Connection, data: Any):
     await connection.send(dumps(data))
 
 
-async def recv_json(connection: Connection):
+async def recv_json(connection: Connection) -> Any:
     return loads(await connection.recv())

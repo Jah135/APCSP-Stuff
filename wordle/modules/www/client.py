@@ -1,11 +1,21 @@
-from wordle import WordlePlayer, WordleGame, LetterValidity
-from websockets import connect, ClientConnection, InvalidURI
-from wordle.game import Guess, LetterValidity
+from typing import Any
+from wordle import WordleGame, LetterValidity
+from websockets import connect, ClientConnection
 
 from .utils import recv_json, send_json
 
 
-class OnlineWordleGame(WordleGame):
+def on_lobby_update(new_lobby_list: list[str]):
+    print("Lobby List:")
+    for player in new_lobby_list:
+        print(player)
+
+
+def on_player_guessed(player: str):
+    print(f"{player} has guessed.")
+
+
+class OnlineWordleGameInterface(WordleGame):
     def __init__(self, display_name: str) -> None:
         super().__init__()
 
@@ -13,7 +23,7 @@ class OnlineWordleGame(WordleGame):
 
     async def make_guess(self, word: str) -> tuple[str, list[LetterValidity]]:  # type: ignore
         connection = self.connection
-        await send_json(connection, {"l": "make_guess", "d": word})
+        await send_json(connection, {"l": "make_guess", "d": {"word": word}})
 
         guess = (
             word,
@@ -24,14 +34,21 @@ class OnlineWordleGame(WordleGame):
         return guess
 
     async def server_event_handler(self):
-        connection = self.connection
+        server_ws = self.connection
 
         while True:
-            event: dict = await recv_json(connection)
-            label, data = event.get("l"), event.get("d")
+            event: dict = await recv_json(server_ws)
+            label: str = event.get("l", "unknown")
+            data: dict = event.get("d", {})
 
-            if label == "lobby_update":
-                print("new lobby list", data)
+            if label == "display_message":
+                print(data["message"])
+            elif label == "lobby_update":
+                on_lobby_update(data["player_list"])
+            elif label == "player_guessed":
+                on_player_guessed(data["player"])
+            elif label == "round_start":
+                print("round started")
 
     async def perform_handshake(
         self, server_ws: ClientConnection

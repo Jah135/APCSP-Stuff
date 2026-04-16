@@ -1,2 +1,2 @@
 from .server import WordleServer
-from .client import OnlineWordleGame
+from .client import OnlineWordleGameInterface
