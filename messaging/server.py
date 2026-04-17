@@ -1,6 +1,6 @@
-from typing import Any
-from websockets import serve, ServerConnection, broadcast, ConnectionClosed
-from json import dumps, loads
+from websockets import serve, ServerConnection, ConnectionClosed
+
+from shared import broadcast_json
 
 import asyncio
 
@@ -12,10 +12,6 @@ class ConnectedClient:
 
 
 connected_clients: list[ConnectedClient] = []
-
-
-def broadcast_json(recipients: list[ServerConnection], data: Any):
-    broadcast(recipients, dumps(data))
 
 
 async def on_client_connect(client_ws: ServerConnection):

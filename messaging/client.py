@@ -1,7 +1,7 @@
 from blessed import Terminal
-
 from websockets import connect, ClientConnection, ConnectionClosed, InvalidURI
-from json import loads, dumps
+
+from shared import recv_json
 
 import asyncio
 
@@ -22,7 +22,7 @@ def on_message_added(content: str, sender: str):
 async def client_event_handler(connection: ClientConnection):
     while True:
         try:
-            event: dict = loads(await connection.recv())
+            event: dict = await recv_json(connection)
             event_type: str = event.get("type", "unknown")
             event_data: dict = event.get("data", {})
 
