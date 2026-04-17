@@ -1,63 +1,114 @@
 from blessed import Terminal
 from websockets import connect, ClientConnection, ConnectionClosed, InvalidURI
+from math import ceil
 
-from shared import recv_json
+from shared import recv_json, send_json
 
 import asyncio
 
 
 term = Terminal()
-message_history: list[tuple[str, str]] = []
+message_history: list[str] = []
 
 
-def on_message_added(content: str, sender: str):
-    message_history.append((content, sender))
+def rerender_messages():
+    total_lines = sum(
+        ceil(len(content) / term.width) + content.count("\n")
+        for content in message_history
+    )
 
-    with term.location(0, term.height - len(message_history) - 3):
-        for content, sender in message_history:
-            print(term.clear_eol + f"{sender}: {content}")
+    print(term.home + term.clear)
+
+    with term.location(0, term.height - 3 - total_lines):
+        for message in message_history:
+            print(term.clear_eol + message)
             term.move_down()
 
 
-async def client_event_handler(connection: ClientConnection):
+def on_message_added(content: str):
+    message_history.append(content)
+
+    rerender_messages()
+
+
+async def on_server_event(
+    server_ws: ClientConnection, event_type: str, event_data: dict
+):
+    if event_type == "member_online":
+        on_message_added(
+            term.green(f"[Server] {event_data["name"]} has entered the room.")
+        )
+    elif event_type == "member_offline":
+        on_message_added(term.red(f"[Server] {event_data["name"]} has left the room."))
+    elif event_type == "message":
+        on_message_added(f"{event_data["sender"]}: {event_data["content"]}")
+
+
+async def server_event_handler(server_ws: ClientConnection):
     while True:
         try:
-            event: dict = await recv_json(connection)
-            event_type: str = event.get("type", "unknown")
-            event_data: dict = event.get("data", {})
+            event: dict = await recv_json(server_ws)
 
-            if event_type == "member_online":
-                on_message_added(
-                    f"{event_data["name"]} has entered the room.", "System"
-                )
-            elif event_type == "member_offline":
-                on_message_added(f"{event_data["name"]} has left the room.", "System")
-            elif event_type == "message":
-                on_message_added(event_data["content"], event_data["sender"])
+            await on_server_event(
+                server_ws, event.get("type", "unknown"), event.get("data", {})
+            )
+
         except ConnectionClosed:
             print("connection closed")
             break
 
 
-async def input_loop(connection: ClientConnection):
-    message_buffer = ""
+async def post_message(server_ws: ClientConnection, message_content: str):
+    await send_json(
+        server_ws, {"type": "post_message", "data": {"content": message_content}}
+    )
+
+
+async def input_loop(server_ws: ClientConnection):
+    input_buffer = ""
+    cursor_blink_state = False
+    cursor_position = 0
 
     with term.cbreak(), term.hidden_cursor():
         while True:
-            key = await term.async_inkey()
+            with term.location(y=term.height - 2, x=0):
+                visible_buffer = input_buffer[: term.width - 3]
+                print(
+                    term.clear_eol
+                    + "> "
+                    + visible_buffer[:cursor_position]
+                    + ("_" if cursor_blink_state else " ")
+                    + visible_buffer[cursor_position:]
+                )
+
+            key = await term.async_inkey(0.5)
+
+            if key == "":
+                cursor_blink_state = not cursor_blink_state
 
             if not key.is_sequence:
-                message_buffer += key
+                input_buffer = (
+                    input_buffer[:cursor_position]
+                    + key
+                    + input_buffer[cursor_position:]
+                )
+                cursor_position += 1
+                cursor_blink_state = False
             else:
-                if key.name == "KEY_BACKSPACE":  # remove
-                    message_buffer = message_buffer[:-1]
-                elif key.name == "KEY_ENTER":  # flush
-                    await connection.send(message_buffer)
+                if key.name == "KEY_LEFT":
+                    cursor_position = max(cursor_position - 1, 0)
+                elif key.name == "KEY_RIGHT":
+                    cursor_position = min(cursor_position + 1, len(input_buffer))
+                elif key.name == "KEY_BACKSPACE":  # remove
+                    if key.modifiers_bits & 4 == 0:
+                        input_buffer = ""  # clear it
 
-                    message_buffer = ""
-
-            with term.location(y=term.height - 2, x=0):
-                print(term.clear_eol + "> " + message_buffer)
+                    input_buffer = input_buffer[:-1]
+                    cursor_position -= 1
+                elif key.name == "KEY_ENTER":  # flush & send message
+                    await post_message(server_ws, input_buffer)
+                    input_buffer = ""
+                    cursor_position = 0
 
 
 async def join_room(room_uri: str, username: str):
@@ -70,7 +121,7 @@ async def join_room(room_uri: str, username: str):
 
             asyncio.create_task(input_loop(connection))
 
-            await client_event_handler(connection)
+            await server_event_handler(connection)
     except InvalidURI:
         print("invalid room URI")
     except OSError:

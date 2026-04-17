@@ -1,6 +1,6 @@
 from websockets import serve, ServerConnection, ConnectionClosed
 
-from shared import broadcast_json
+from shared import broadcast_json, recv_json
 
 import asyncio
 
@@ -12,6 +12,36 @@ class ConnectedClient:
 
 
 connected_clients: list[ConnectedClient] = []
+
+
+async def on_client_event(client: ConnectedClient, event_type: str, event_data: dict):
+    if event_type == "post_message":
+        raw_message: str = event_data.get("content", "")
+        filtered_message: str = raw_message.strip()
+
+        if len(filtered_message) == 0:
+            return  # don't broadcast message
+
+        broadcast_json(
+            [other.connection for other in connected_clients],
+            {
+                "type": "message",
+                "data": {"content": filtered_message, "sender": client.username},
+            },
+        )
+
+
+async def client_event_handler(client: ConnectedClient):
+    while True:
+        try:
+            event: dict = await recv_json(client.connection)
+
+            await on_client_event(
+                client, event.get("type", "unknown"), event.get("data", {})
+            )
+        except ConnectionClosed:
+            print("connection closed")
+            break
 
 
 async def on_client_connect(client_ws: ServerConnection):
@@ -30,16 +60,7 @@ async def on_client_connect(client_ws: ServerConnection):
     )
 
     try:
-        while True:
-            message = str(await client_ws.recv())
-
-            broadcast_json(
-                [other.connection for other in connected_clients],
-                {
-                    "type": "message",
-                    "data": {"content": message, "sender": client.username},
-                },
-            )
+        await client_event_handler(client)
     except ConnectionClosed:
         pass
     finally:
