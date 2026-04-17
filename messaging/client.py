@@ -1,31 +1,21 @@
 from blessed import Terminal
 
-from websockets import connect, ClientConnection, ConnectionClosed
+from websockets import connect, ClientConnection, ConnectionClosed, InvalidURI
 from json import loads, dumps
 
 import asyncio
 
 
-class Message:
-    def __init__(self, content: str, sender: str) -> None:
-        self.content = content
-        self.sender = sender
-
-    @property
-    def display(self) -> str:
-        return f"{self.sender}: {self.content}"
-
-
 term = Terminal()
-message_history: list[Message] = []
+message_history: list[tuple[str, str]] = []
 
 
 def on_message_added(content: str, sender: str):
-    message_history.append(Message(content, sender))
+    message_history.append((content, sender))
 
     with term.location(0, term.height - len(message_history) - 3):
-        for message in message_history:
-            print(term.clear_eol + message.display)
+        for content, sender in message_history:
+            print(term.clear_eol + f"{sender}: {content}")
             term.move_down()
 
 
@@ -37,9 +27,11 @@ async def client_event_handler(connection: ClientConnection):
             event_data: dict = event.get("data", {})
 
             if event_type == "member_online":
-                on_message_added(f"{event_data["name"]} is online.", "System")
+                on_message_added(
+                    f"{event_data["name"]} has entered the room.", "System"
+                )
             elif event_type == "member_offline":
-                on_message_added(f"{event_data["name"]} is offline.", "System")
+                on_message_added(f"{event_data["name"]} has left the room.", "System")
             elif event_type == "message":
                 on_message_added(event_data["content"], event_data["sender"])
         except ConnectionClosed:
@@ -64,22 +56,32 @@ async def input_loop(connection: ClientConnection):
 
                     message_buffer = ""
 
-            with term.location(y=term.height - 2):
-                print(term.clear_bol + term.rjust(message_buffer + " <<"))
+            with term.location(y=term.height - 2, x=0):
+                print(term.clear_eol + "> " + message_buffer)
+
+
+async def join_room(room_uri: str, username: str):
+    try:
+        print(f"connecting to '{room_uri}' as {username}...")
+        async with connect(room_uri) as connection:
+            await connection.send(username)
+
+            print(term.home + term.clear)
+
+            asyncio.create_task(input_loop(connection))
+
+            await client_event_handler(connection)
+    except InvalidURI:
+        print("invalid room URI")
+    except OSError:
+        print(f"unnable to connect to room '{room_uri}'")
 
 
 async def main():
     username = input("Username: ")
-    uri = "ws://localhost:6767"  # input("Room URI: ")
+    uri = input("Room URI: ")
 
-    print(term.home + term.clear)
-
-    async with connect(uri) as connection:
-        await connection.send(username)
-
-        asyncio.create_task(input_loop(connection))
-
-        await client_event_handler(connection)
+    await join_room(uri, username)
 
 
 asyncio.run(main())
