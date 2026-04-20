@@ -2,10 +2,9 @@ from blessed import Terminal
 from websockets import connect, ClientConnection, ConnectionClosed, InvalidURI
 from math import ceil
 
-from shared import recv_json, send_json
+from shared import recv_json, send_json, get_local_ip
 
 import asyncio
-
 
 term = Terminal()
 message_history: list[str] = []
@@ -65,20 +64,17 @@ async def post_message(server_ws: ClientConnection, message_content: str):
 
 
 async def input_loop(server_ws: ClientConnection):
-    input_buffer = ""
     cursor_blink_state = False
-    cursor_position = 0
+    input_buffer = ""
 
     with term.cbreak(), term.hidden_cursor():
         while True:
             with term.location(y=term.height - 2, x=0):
-                visible_buffer = input_buffer[: term.width - 3]
                 print(
                     term.clear_eol
                     + "> "
-                    + visible_buffer[:cursor_position]
+                    + input_buffer[: term.width - 3]
                     + ("_" if cursor_blink_state else " ")
-                    + visible_buffer[cursor_position:]
                 )
 
             key = await term.async_inkey(0.5)
@@ -86,25 +82,20 @@ async def input_loop(server_ws: ClientConnection):
             if key == "":
                 cursor_blink_state = not cursor_blink_state
 
-            if not key.is_sequence:
-                input_buffer = (
-                    input_buffer[:cursor_position]
-                    + key
-                    + input_buffer[cursor_position:]
-                )
-                cursor_position += 1
+            if not key.is_sequence and key != "":
+                input_buffer += key
                 cursor_blink_state = False
             else:
-                if key.name == "KEY_LEFT":
-                    cursor_position = max(cursor_position - 1, 0)
-                elif key.name == "KEY_RIGHT":
-                    cursor_position = min(cursor_position + 1, len(input_buffer))
-                elif key.name == "KEY_BACKSPACE":  # remove
+                # if key.name == "KEY_LEFT":
+                #     cursor_position = max(cursor_position - 1, 0)
+                # elif key.name == "KEY_RIGHT":
+                #     cursor_position = min(cursor_position + 1, len(input_buffer))
+                if key.name == "KEY_BACKSPACE":  # remove
                     if key.modifiers_bits & 4 == 0:
                         input_buffer = ""  # clear it
 
                     input_buffer = input_buffer[:-1]
-                    cursor_position -= 1
+
                 elif key.name == "KEY_ENTER":  # flush & send message
                     await post_message(server_ws, input_buffer)
                     input_buffer = ""

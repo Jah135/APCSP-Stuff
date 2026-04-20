@@ -1,6 +1,6 @@
 from websockets import serve, ServerConnection, ConnectionClosed
 
-from shared import broadcast_json, recv_json
+from shared import broadcast_json, recv_json, get_local_ip
 
 import asyncio
 
@@ -72,7 +72,7 @@ async def on_client_connect(client_ws: ServerConnection):
 
 
 async def main():
-    host = input("host: ")
+    host = get_local_ip()  # input("host: ")
     port = int(input("port: "))
 
     async with serve(on_client_connect, host=host, port=port) as server:
