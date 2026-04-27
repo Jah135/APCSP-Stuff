@@ -1,4 +1,4 @@
-from Field import Field, MINE
+from Field import Field, MINE, render_field
 from Input import KeyboardInput, PlaybackInput
 from random import randint
 import keyboard
@@ -21,7 +21,7 @@ if DO_PLAYBACK:
 
         input = PlaybackInput([key.strip() for key in f.readlines()], 0.01)
 
-mine_field = Field(30, 20, SEED)
+mine_field = Field(20, 20, SEED)
 mine_field.place_mines(100)
 
 cursor = (0, 0)
@@ -51,7 +51,7 @@ def move_cursor(dx: int, dy: int):
 def redraw_screen():
     print(
         "\x1b[H\x1b[2J"
-        + mine_field.render(cursor)
+        + render_field(mine_field, cursor, show_mines=False)
         + f"\n{mine_field.get_flag_count()}/{mine_field.get_state_count(MINE)}\nRECORDING: {DO_RECORD}\nPLAYBACK: {DO_PLAYBACK}"
     )
 
@@ -91,7 +91,7 @@ KEYMAPPING = {
 
 redraw_screen()
 
-while not mine_field.is_exploded:
+while not mine_field.has_exploded:
     key = input.read()
 
     if key == None:
@@ -109,7 +109,7 @@ while not mine_field.is_exploded:
     if mine_field.is_win_state():
         on_win()
         break
-    elif mine_field.is_exploded:
+    elif mine_field.has_exploded:
         on_lose()
         break
 

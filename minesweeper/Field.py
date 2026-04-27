@@ -14,7 +14,6 @@ FLAGGED = 0b100
 # ^-> FLAG STATE  ^^^-> FIELD STATE
 
 MAX_SAFETY_ATTEMPTS = 8
-SHOW_KERNEL = False
 
 MINE_KERNEL = kernels.NORMAL
 
@@ -59,8 +58,8 @@ class Field:
     def __init__(self, width: int, height: int, seed: int) -> None:
         self._field = bytearray(width * height)
 
-        self.is_exploded = False
-        self.is_first_move = False
+        self.has_exploded = False
+        self.first_move = True
 
         self.width = width
         self.height = height
@@ -131,7 +130,7 @@ class Field:
         return count
 
     def is_win_state(self):
-        if self.is_exploded:
+        if self.has_exploded:
             return False
 
         all_flagged = True
@@ -197,7 +196,7 @@ class Field:
             attempts += 1
             is_totally_safe = True
 
-            for off_x, off_y in MINE_KERNEL:
+            for off_x, off_y in [(0, 0), *MINE_KERNEL]:
                 target_x, target_y = x + off_x, y + off_y
 
                 if not self.within_bounds(target_x, target_y):
@@ -217,13 +216,13 @@ class Field:
             return
 
         # ensure safety
-        if not self.is_first_move:
-            self.is_first_move = True
+        if self.first_move:
+            self.first_move = False
             self.ensure_safety(x, y)
 
         # die on mine
         if self._read_field(index) == MINE:
-            self.is_exploded = True
+            self.has_exploded = True
 
             return
 
@@ -274,69 +273,77 @@ class Field:
 
         return
 
-    def render(self, cursor_position: tuple[int, int]) -> str:
-        output = ""
 
-        highlight_indices = [self.to_index(*cursor_position)]
-        kernel_indices = []
+def render_field(
+    field: Field,
+    cursor_position: tuple[int, int],
+    show_kernel: bool = False,
+    show_mines: bool = False,
+) -> str:
+    output = ""
 
-        if SHOW_KERNEL:
-            for off_x, off_y in MINE_KERNEL:
-                check_x, check_y = (
-                    cursor_position[0] + off_x,
-                    cursor_position[1] + off_y,
-                )
+    highlight_indices = [field.to_index(*cursor_position)]
+    kernel_indices = []
 
-                if not self.within_bounds(check_x, check_y):
-                    continue
+    if show_kernel:
+        for off_x, off_y in MINE_KERNEL:
+            check_x, check_y = (
+                cursor_position[0] + off_x,
+                cursor_position[1] + off_y,
+            )
 
-                kernel_indices.append(self.to_index(check_x, check_y))
+            if not field.within_bounds(check_x, check_y):
+                continue
 
-        for y in range(self.height):
-            for x in range(self.width):
-                index = y * self.width + x
+            kernel_indices.append(field.to_index(check_x, check_y))
 
-                state = self.read_field(x, y)
-                is_flagged = self.read_flag(x, y)
-                is_highlighted = index in highlight_indices
-                is_kernel = index in kernel_indices
+    should_show_mines = show_mines or field.has_exploded
 
-                px_style = None
-                px = ""
+    for y in range(field.height):
+        for x in range(field.width):
+            index = y * field.width + x
 
-                if state == OPEN:
-                    danger = self.get_kernel_state_count(x, y, MINE)
+            state = field.read_field(x, y)
+            is_flagged = field.read_flag(x, y)
+            is_highlighted = index in highlight_indices
+            is_kernel = index in kernel_indices
 
-                    if danger == 0:
-                        px = ". "
-                    else:
-                        px = f"{danger} "
+            px_style = None
+            px = ""
 
-                        if not is_highlighted:
-                            px_style = DANGER_STYLES[danger - 1]
+            if state == OPEN:
+                danger = field.get_kernel_state_count(x, y, MINE)
+
+                if danger == 0:
+                    px = ". "
                 else:
-                    if is_flagged:
-                        px = "P "
-                        px_style = FLAG_STYLE
+                    px = f"{danger} "
+
+                    if not is_highlighted:
+                        px_style = DANGER_STYLES[danger - 1]
+            else:
+                if is_flagged:
+                    px = "P "
+                    px_style = FLAG_STYLE
+                else:
+                    if state == MINE and should_show_mines:
+                        px = "X "
+                        px_style = MINE_STYLE
                     else:
-                        if state == MINE and self.is_exploded:
-                            px = "X "
-                            px_style = MINE_STYLE
-                        else:
-                            px = "? "
-                            px_style = CLOSED_STYLE
+                        px = "? "
+                        px_style = CLOSED_STYLE
 
-                if is_highlighted:
-                    px_style = HIGHLIGHT_STYLE
+            if is_highlighted:
+                px_style = HIGHLIGHT_STYLE
 
-                if is_kernel:
-                    px_style = KERNEL_STYLE
+            if is_kernel:
+                px_style = KERNEL_STYLE
 
-                if px_style != None:
-                    px = px_style.apply_with_reset(px)
+            if px_style != None:
+                px = px_style.apply_with_reset(px)
 
-                output += px
+            output += px
 
-            output += "\n"
+        output += "\n"
 
-        return output
+    return output
