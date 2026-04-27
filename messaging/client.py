@@ -1,3 +1,5 @@
+# client.py
+
 from blessed import Terminal
 from websockets import connect, ClientConnection, ConnectionClosed, InvalidURI
 from math import ceil
@@ -7,6 +9,8 @@ from shared import recv_json, send_json, get_local_ip
 import asyncio
 
 term = Terminal()
+
+
 message_history: list[str] = []
 
 
@@ -53,7 +57,7 @@ async def server_event_handler(server_ws: ClientConnection):
             )
 
         except ConnectionClosed:
-            print("connection closed")
+            print("server initiated disconnect")
             break
 
 
@@ -86,20 +90,15 @@ async def input_loop(server_ws: ClientConnection):
                 input_buffer += key
                 cursor_blink_state = False
             else:
-                # if key.name == "KEY_LEFT":
-                #     cursor_position = max(cursor_position - 1, 0)
-                # elif key.name == "KEY_RIGHT":
-                #     cursor_position = min(cursor_position + 1, len(input_buffer))
                 if key.name == "KEY_BACKSPACE":  # remove
                     if key.modifiers_bits & 4 == 0:
-                        input_buffer = ""  # clear it
+                        input_buffer = ""
 
                     input_buffer = input_buffer[:-1]
 
                 elif key.name == "KEY_ENTER":  # flush & send message
                     await post_message(server_ws, input_buffer)
                     input_buffer = ""
-                    cursor_position = 0
 
 
 async def join_room(room_uri: str, username: str):
