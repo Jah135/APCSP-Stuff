@@ -7,7 +7,6 @@ from math import pi, degrees
 from vec2 import Vec2
 from line import Line
 
-
 pygame.init()
 
 DEBUG_FONT = font.Font(None, size=20)
@@ -100,8 +99,8 @@ class World:
             draw.line(
                 surface,
                 col,
-                line.start_position.t,
-                line.end_position.t,
+                line.start_position.tup,
+                line.end_position.tup,
             )
 
 
@@ -167,13 +166,13 @@ class Player:
             "yellow",
             True,
             [
-                (self.position + forward * 8).t,
-                (self.position + right * 3).t,
-                (self.position - right * 3).t,
+                (self.position + forward * 8).tup,
+                (self.position + right * 3).tup,
+                (self.position - right * 3).tup,
             ],
         )
         draw.line(
-            surface, "lightblue", self.position.t, (self.position + self.velocity).t
+            surface, "lightblue", self.position.tup, (self.position + self.velocity).tup
         )
 
 

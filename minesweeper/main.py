@@ -21,7 +21,7 @@ if DO_PLAYBACK:
 
         input = PlaybackInput([key.strip() for key in f.readlines()], 0.01)
 
-mine_field = Field(20, 20, SEED)
+mine_field = Field(30, 30, SEED)
 mine_field.place_mines(100)
 
 cursor = (0, 0)

@@ -13,7 +13,7 @@ class Vec2:
         return cls(x=cos(angle) * magnitude, y=sin(angle) * magnitude)
 
     @property
-    def t(self) -> tuple[float, float]:
+    def tup(self) -> tuple[float, float]:
         """A tuple representation of this vector."""
         return (self.x, self.y)
 

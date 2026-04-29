@@ -122,4 +122,4 @@ class Line:
         return self.start_position + sd * t
 
     def draw(self, surface: pygame.Surface):
-        pygame.draw.line(surface, "red", self.start_position.t, self.end_position.t)
+        pygame.draw.line(surface, "red", self.start_position.tup, self.end_position.tup)
