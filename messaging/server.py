@@ -1,3 +1,5 @@
+# file: server.py
+
 from websockets import serve, ServerConnection, ConnectionClosed
 
 from shared import broadcast_json, recv_json, get_local_ip
@@ -20,7 +22,7 @@ async def on_client_event(client: ConnectedClient, event_type: str, event_data: 
         filtered_message: str = raw_message.strip()
 
         if len(filtered_message) == 0:
-            return  # don't broadcast message
+            return
 
         broadcast_json(
             [other.connection for other in connected_clients],
@@ -40,7 +42,7 @@ async def client_event_handler(client: ConnectedClient):
                 client, event.get("type", "unknown"), event.get("data", {})
             )
         except ConnectionClosed:
-            print("connection closed")
+            print("client initiated disconnect")
             break
 
 

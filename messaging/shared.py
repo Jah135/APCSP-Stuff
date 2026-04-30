@@ -1,3 +1,5 @@
+# shared.py
+
 from typing import Any, Iterable
 from websockets.asyncio.connection import Connection, broadcast
 from json import loads, dumps
