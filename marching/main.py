@@ -1,28 +1,54 @@
-from pygame.surface import Surface
+import pygame
 import pygame.draw as draw
+from random import randint
 
 from game import Game
+from gridfield2d import GridField2D
 
-pos = (100, 100)
-vel = (50, -130)
+CELL_SIZE = 10
+
+pygame.font.init()
+font = pygame.font.Font(None, 20)
 
 
 class TestGame(Game):
     window_width = 500
     window_height = 500
-    target_framerate = -1
+    target_framerate = 1
 
-    def on_draw(self, out: Surface):
+    def __init__(self) -> None:
+        super().__init__()
+
+        field = GridField2D(50, 50)
+
+        for i in range(field.width * field.height):
+            field.values[i] = randint(0, 4)
+
+        self.field = field
+
+    def on_draw(self, out: pygame.Surface):
         out.fill("black")
 
-        draw.circle(out, "pink", pos, 2)
-        draw.line(out, "blue", pos, (pos[0] + vel[0], pos[1] + vel[1]))
+        for x in range(self.field.width):
+            for y in range(self.field.height):
+                value = self.field.sample_point(x, y)
 
-    def on_update(self, dt: float):
-        global pos, vel
+                base_x = x * CELL_SIZE
+                base_y = y * CELL_SIZE
 
-        pos = (pos[0] + vel[0] * dt, pos[1] + vel[1] * dt)
-        vel = (vel[0], vel[1] + 60 * dt)
+                points = [
+                    (base_x + offset[0] * CELL_SIZE, base_y + offset[1] * CELL_SIZE)
+                    for offset in self.field.get_contour_vertex_offsets(x, y, 3)
+                ]
+                point_groups = [
+                    (points[index], points[index + 1])
+                    for index in range(0, len(points), 2)
+                ]
+
+                for group in point_groups:
+                    draw.line(out, "red", group[0], group[1])
+
+    # def on_update(self, dt: float): ...
 
 
 game = TestGame()

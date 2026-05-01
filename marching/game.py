@@ -10,6 +10,7 @@ class Game:
         pygame.init()
 
         self.screen = pygame.display.set_mode((self.window_width, self.window_height))
+        self.running = False
 
         self.last_dt = 0
 
@@ -17,17 +18,20 @@ class Game:
     def on_draw(self, out: pygame.Surface): ...
     def on_update(self, dt: float): ...
 
+    def quit(self):
+        self.running = False
+
     def start(self):
-        running = True
+        self.running = True
 
         clock = pygame.time.Clock()
 
-        while running:
+        while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
-                else:
-                    self.on_event(event=event)
+                    self.quit()
+
+                self.on_event(event=event)
 
             dt = clock.tick(self.target_framerate) / 1000
 
