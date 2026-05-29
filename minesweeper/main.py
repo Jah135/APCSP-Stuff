@@ -5,7 +5,7 @@ import keyboard
 
 SEED = randint(0, 19099999)
 
-DO_PLAYBACK = False
+DO_PLAYBACK = True
 DO_RECORD = False
 
 input = KeyboardInput()

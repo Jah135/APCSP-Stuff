@@ -19,10 +19,7 @@ class TestGame(Game):
     def __init__(self) -> None:
         super().__init__()
 
-        field = GridField2D(50, 50)
-
-        for i in range(field.width * field.height):
-            field.values[i] = randint(0, 4)
+        field = GridField2D(20, 20)
 
         self.field = field
 
@@ -31,24 +28,24 @@ class TestGame(Game):
 
         for x in range(self.field.width):
             for y in range(self.field.height):
-                value = self.field.sample_point(x, y)
 
                 base_x = x * CELL_SIZE
                 base_y = y * CELL_SIZE
 
-                points = [
-                    (base_x + offset[0] * CELL_SIZE, base_y + offset[1] * CELL_SIZE)
-                    for offset in self.field.get_contour_vertex_offsets(x, y, 3)
-                ]
-                point_groups = [
-                    (points[index], points[index + 1])
-                    for index in range(0, len(points), 2)
+                lines = [
+                    tuple(
+                        (base_x + point[0] * CELL_SIZE, base_y + point[1] * CELL_SIZE)
+                        for point in group
+                    )
+                    for group in self.field.get_vertex_contour_offsets(x, y)
                 ]
 
-                for group in point_groups:
+                for group in lines:
                     draw.line(out, "red", group[0], group[1])
 
-    # def on_update(self, dt: float): ...
+                value = self.field.sample_point(x, y)
+
+                draw.circle(out, (int(value), 0, 0), (base_x, base_y), 3)
 
 
 game = TestGame()

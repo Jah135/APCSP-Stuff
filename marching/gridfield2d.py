@@ -17,22 +17,22 @@ VERTEX_VEC_OFFSETS: list[tuple[float, float]] = [
     (0.5, 1),
     (0, 0.5),
 ]
-CONTOUR_VERTEX_INDICES: list[list[int]] = [
+VERTEX_OFFSET_INDICES: list[list[tuple[int, int]]] = [
     [],  # 0
-    [0, 1],  # 1
-    [1, 2],  # 2
-    [0, 2],  # 3
-    [2, 3],  # 4
-    [0, 1, 2, 3],  # 5
-    [1, 3],  # 6
-    [0, 3],  # 7
-    [0, 3],  # 8
-    [1, 3],  # 9
-    [1, 2, 0, 3],  # 10
-    [2, 3],  # 11
-    [0, 2],  # 12
-    [1, 2],  # 13
-    [0, 1],  # 14
+    [(0, 1)],  # 1
+    [(1, 2)],  # 2
+    [(0, 2)],  # 3
+    [(2, 3)],  # 4
+    [(0, 1), (2, 3)],  # 5
+    [(1, 3)],  # 6
+    [(0, 3)],  # 7
+    [(0, 3)],  # 8
+    [(1, 3)],  # 9
+    [(1, 2), (0, 3)],  # 10
+    [(2, 3)],  # 11
+    [(0, 2)],  # 12
+    [(1, 2)],  # 13
+    [(0, 1)],  # 14
     [],  # 15
 ]
 
@@ -41,9 +41,9 @@ class GridField2D:
     def __init__(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
-        self.values: list[int] = [0] * (width * height)
+        self.values: list[float] = [0] * (width * height)
 
-    def set_point(self, x: int, y: int, value: int):
+    def set_point(self, x: int, y: int, value: float):
         if x > self.width or y > self.height:
             return
 
@@ -63,11 +63,17 @@ class GridField2D:
 
         return a | (b * 2) | (c * 4) | (d * 8)
 
-    def get_contour_vertex_indices(self, x: int, y: int, threshold: int = 0):
-        return CONTOUR_VERTEX_INDICES[self.sample_cell_state(x, y, threshold)]
+    def get_vertex_offset_indices(
+        self, x: int, y: int, threshold: int = 0
+    ) -> list[tuple[int, int]]:
+        return VERTEX_OFFSET_INDICES[self.sample_cell_state(x, y, threshold)]
 
-    def get_contour_vertex_offsets(self, x: int, y: int, threshold: int = 0):
+    def get_vertex_contour_offsets(
+        self, x: int, y: int, threshold: int = 0
+    ) -> list[tuple[tuple[float, float], tuple[float, float]]]:
         return [
-            VERTEX_VEC_OFFSETS[index]
-            for index in self.get_contour_vertex_indices(x, y, threshold)
+            # VERTEX_VEC_OFFSETS[index]
+            # for index in self.get_vertex_offset_indices(x, y, threshold)
+            (VERTEX_VEC_OFFSETS[group[0]], VERTEX_VEC_OFFSETS[group[1]])
+            for group in self.get_vertex_offset_indices(x, y, threshold)
         ]
