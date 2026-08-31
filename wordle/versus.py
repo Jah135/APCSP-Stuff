@@ -9,7 +9,7 @@ from random import choice
 
 MAX_GUESSES = 6
 TARGET_WORD = choice(DICTIONARY)
-BOT_COUNT = 8
+BOT_COUNT = 15
 
 VersusPlayer = tuple[WordlePlayer, LocalWordleGame, str]
 
@@ -70,17 +70,21 @@ bot_games = [bot[1] for bot in bot_players]
 all_games = [human_game, *bot_games]
 all_players: list[VersusPlayer] = [(human_player, human_game, "you"), *bot_players]
 
+
+def make_bot_guess(bot_player: VersusPlayer):
+    player, game, _ = bot_player
+
+    if game.is_done:
+        return
+
+    guess = player.prompt_word() if len(game.guess_history) > 0 else choice(DICTIONARY)
+
+    player.on_guess_feedback(*game.make_guess(guess))
+
+
 while not (human_game.is_done and all(game.is_done for game in bot_games)):
     for bot in bot_players:
-        bot_player, bot_game, label = bot
-        if not bot_game.is_done:
-            bot_player.on_guess_feedback(
-                *bot_game.make_guess(
-                    bot_player.prompt_word()
-                    if len(bot_game.guess_history) > 0
-                    else choice(DICTIONARY)
-                )
-            )
+        make_bot_guess(bot)
 
     if not human_game.is_done:
         human_player.on_guess_feedback(
